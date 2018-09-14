@@ -17,7 +17,7 @@ function formatSlackMessage (incidentId, incidentName, slackUserName, incidentSl
   slackMessage.attachments.push({
       color: '#3367d6',
       title: 'Incident Document',
-      text: googleDocUrl
+      text: googleDocUrl,
       author_name: `@${slackUserName}`
   });
 
@@ -25,13 +25,13 @@ function formatSlackMessage (incidentId, incidentName, slackUserName, incidentSl
   slackMessage.attachments.push({
       color: '#228B22',
       title: 'Incident Google Meet',
-      text: 'https://hangouts.google.com/hangouts/_/meet/' + config.GOOGLE_DOMAIN + '/incident-' + incidentId;
+      text: 'https://hangouts.google.com/hangouts/_/meet/' + config.GOOGLE_DOMAIN + '/incident-' + incidentId
   });
 
   // Slack channel
   slackMessage.attachments.push({
       color: '#8f0000',
-      title: 'Incident Slack channel'
+      title: 'Incident Slack channel',
       text: incidentSlackChannel
   });
 
