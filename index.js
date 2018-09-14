@@ -3,6 +3,7 @@
 const config = require('./config.json');
 const googleapis = require('googleapis');
 const request = require('request');
+const moment = require('moment');
 
 function formatSlackMessage (incidentId, incidentName, slackUserName, incidentSlackChannel, googleDocUrl) {
   // Prepare a rich Slack message
@@ -38,7 +39,15 @@ function formatSlackMessage (incidentId, incidentName, slackUserName, incidentSl
   return slackMessage;
 }
 
-function verifyWebhook (body) {
+function verifyPostRequest(method) {
+  if (method !== 'POST') {
+    const error = new Error('Only POST requests are accepted');
+    error.code = 405;
+    throw error;
+  }
+}
+
+function verifySlackWebhook (body) {
   if (!body || body.token !== config.SLACK_TOKEN) {
     const error = new Error('Invalid credentials');
     error.code = 401;
@@ -56,10 +65,10 @@ function createIncidentFlow (body) {
   var googleDocUrl = createGoogleDoc(incidentId, incidentName);
 
   // Return a formatted message
-  resolve(formatSlackMessage(incidentId, incidentName, body.user_name, incidentSlackChannel, googleDocUrl));
+  return formatSlackMessage(incidentId, incidentName, body.user_name, incidentSlackChannel, googleDocUrl);
 }
 
-function createSlackChannel (channelName) {
+function createSlackChannel (incidentId) {
   var incidentSlackChannel = config.SLACK_INCIDENT_CHANNEL_PREFIX + incidentId;
 
   request.post({
@@ -87,7 +96,7 @@ function createGoogleDoc(incidentId, incidentName) {
   var request = googleDrive.files.copy({
     'fileId': config.GOOGLE_DOCS_FILE_ID,
     'resource': {
-      title: 'Incident: ' + incidentName
+      title: 'Incident: ' + incidentName + ' (' + incidentId + ')' 
     }
   });
 
@@ -97,26 +106,19 @@ function createGoogleDoc(incidentId, incidentName) {
 }
 
 exports.incident = (req, res) => {
-  return Promise.resolve()
-    .then(() => {
-      if (req.method !== 'POST') {
-        const error = new Error('Only POST requests are accepted');
-        error.code = 405;
-        throw error;
-      }
+  try {
+    verifyPostRequest(req.method);
 
-      // Verify that this request came from Slack
-      verifyWebhook(req.body);
+    verifySlackWebhook(req.body);
 
-      return createIncidentFlow(req.body);
-    })
-    .then((response) => {
-      // Send the formatted message back to Slack
-      res.json(response);
-    })
-    .catch((err) => {
-      console.error(err);
-      res.status(err.code || 500).send(err);
-      return Promise.reject(err);
-    });
+    var slackMessage = createIncidentFlow(req.body);
+
+    res.json(slackMessage);
+  } catch (error) {
+    if (error.code) {
+      res.status(error.code).json({message: error.message});
+    } else {
+      res.json({message: error.message});
+    }
+  }
 };
