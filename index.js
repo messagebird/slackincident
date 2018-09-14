@@ -1,7 +1,7 @@
 'use strict';
 
 const config = require('./config.json');
-const googleapis = require('googleapis');
+const {google} = require('googleapis');
 const request = require('request');
 const moment = require('moment');
 
@@ -88,21 +88,25 @@ function createSlackChannel (incidentId) {
 }
 
 function createGoogleDoc(incidentId, incidentName) {
-  var googleDrive = googleapis.drive({
+  var googleDrive = google.drive({
     version: 'v3',
     auth: config.GOOGLE_API_KEY
   });
 
-  var request = googleDrive.files.copy({
+  var result = googleDrive.files.copy({
     'fileId': config.GOOGLE_DOCS_FILE_ID,
     'resource': {
       title: 'Incident: ' + incidentName + ' (' + incidentId + ')' 
     }
+  }, function(error, file) {
+    if (err) {
+      return console.error('Copying Google Document failed', error);
+    }
+
+    return 'https://docs.google.com/document/d/' + file.fileId;
   });
 
-  request.execute(function(resp) {
-      return 'https://docs.google.com/document/d/' + resp.fileId;
-  });
+  return 'Huh?';
 }
 
 exports.incident = (req, res) => {
@@ -115,10 +119,6 @@ exports.incident = (req, res) => {
 
     res.json(slackMessage);
   } catch (error) {
-    if (error.code) {
-      res.status(error.code).json({message: error.message});
-    } else {
-      res.json({message: error.message});
-    }
+      res.status((error.code ? error.code : 500)).json({message: error.message});
   }
 };
