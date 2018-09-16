@@ -88,25 +88,37 @@ function createSlackChannel (incidentId) {
 }
 
 function createGoogleDoc(incidentId, incidentName) {
+  // Disabled for now, because it's not so easy to grant Drive access via API on single/some files/folders
+  /*
   var googleDrive = google.drive({
     version: 'v3',
     auth: config.GOOGLE_API_KEY
   });
 
-  var result = googleDrive.files.copy({
-    'fileId': config.GOOGLE_DOCS_FILE_ID,
-    'resource': {
+  var params = {
+    fileId: config.GOOGLE_DOCS_FILE_ID,
+    supportsTeamDrives: true,
+    resource: {
       title: 'Incident: ' + incidentName + ' (' + incidentId + ')' 
     }
-  }, function(error, file) {
-    if (err) {
-      return console.error('Copying Google Document failed', error);
-    }
+  };
 
-    return 'https://docs.google.com/document/d/' + file.fileId;
-  });
+  var result = googleDrive.files.copy(params)
+    .then(res => {
+      console.log(`New document ID is ${res.fileId}`);
 
-  return 'Huh?';
+      return 'https://docs.google.com/document/d/' + res.fileId;
+    })
+    .catch(error => {
+      console.error('Copying Google Document failed', error);
+
+      return 'Copying Google Document failed';
+    });
+
+  console.log('Google result: ', result);
+  */
+
+  return 'Make a copy of https://docs.google.com/document/d/1h5rMIrsvXQzwsKU7-tfnbcPLnqMx6omKu32YJxzbwsY/edit'
 }
 
 exports.incident = (req, res) => {
