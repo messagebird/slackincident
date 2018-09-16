@@ -10,7 +10,7 @@ function formatSlackMessage (incidentId, incidentName, slackUserName, incidentSl
   // See https://api.slack.com/docs/message-formatting
   const slackMessage = {
     response_type: 'in_channel',
-    text: `Incident reported: ${incidentName} (${incidentId})`,
+    text: `@${slackUserName} reported: ${incidentName} (${incidentId})`,
     attachments: []
   };
 
@@ -18,8 +18,7 @@ function formatSlackMessage (incidentId, incidentName, slackUserName, incidentSl
   slackMessage.attachments.push({
       color: '#3367d6',
       title: 'Incident Document',
-      text: googleDocUrl,
-      author_name: `@${slackUserName}`
+      text: googleDocUrl
   });
 
   // Hangout link
@@ -58,14 +57,13 @@ function verifySlackWebhook (body) {
 function createIncidentFlow (body) {
   var incidentId = moment().format('YYMMDDhhmm');
   var incidentName = body.text;
+  var incidentManagerSlackHandle = body.user_name;
 
-  var incidentSlackChannel = createSlackChannel(incidentId);
-
-  // Create Google Doc
+  var slackChannel = createSlackChannel(incidentId);
   var googleDocUrl = createGoogleDoc(incidentId, incidentName);
 
   // Return a formatted message
-  return formatSlackMessage(incidentId, incidentName, body.user_name, incidentSlackChannel, googleDocUrl);
+  return formatSlackMessage(incidentId, incidentName, incidentManagerSlackHandle, slackChannel, googleDocUrl);
 }
 
 function createSlackChannel (incidentId) {
