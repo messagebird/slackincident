@@ -8,17 +8,27 @@ const moment = require('moment');
 function formatSlackMessage (incidentId, incidentName, slackUserName, incidentSlackChannel, googleDocUrl) {
   // Prepare a rich Slack message
   // See https://api.slack.com/docs/message-formatting
-  const slackMessage = {
-    response_type: 'in_channel',
-    text: `@${slackUserName} reported: ${incidentName} (${incidentId})`,
-    attachments: []
+  var slackMessage = {
+    username: 'Incident Bot',
+    icon_emoji: ':warning:',
+    channel: '',
+    text: incidentName,
+    attachments: [],
+    link_names: true,
+    parse: 'full'
   };
 
-  // Google Doc
   slackMessage.attachments.push({
-      color: '#3367d6',
-      title: 'Incident Document',
-      text: googleDocUrl
+      color: '#000000',
+      title: "Reported by",
+      text: `@${slackUserName}`
+  });
+
+  // Slack channel
+  slackMessage.attachments.push({
+      color: '#8f0000',
+      title: 'Incident Slack channel',
+      text: '#' + incidentSlackChannel
   });
 
   // Hangout link
@@ -28,11 +38,11 @@ function formatSlackMessage (incidentId, incidentName, slackUserName, incidentSl
       text: 'https://hangouts.google.com/hangouts/_/meet/' + config.GOOGLE_DOMAIN + '/incident-' + incidentId
   });
 
-  // Slack channel
+  // Google Doc
   slackMessage.attachments.push({
-      color: '#8f0000',
-      title: 'Incident Slack channel',
-      text: incidentSlackChannel
+      color: '#3367d6',
+      title: 'Incident Document',
+      text: googleDocUrl
   });
 
   return slackMessage;
@@ -59,30 +69,65 @@ function createIncidentFlow (body) {
   var incidentName = body.text;
   var incidentManagerSlackHandle = body.user_name;
 
-  var slackChannel = createSlackChannel(incidentId);
+  var incidentSlackChannel = createSlackChannel(incidentId);
   var googleDocUrl = createGoogleDoc(incidentId, incidentName);
 
   // Return a formatted message
-  return formatSlackMessage(incidentId, incidentName, incidentManagerSlackHandle, slackChannel, googleDocUrl);
+  var slackMessage = formatSlackMessage(incidentId, incidentName, incidentManagerSlackHandle, incidentSlackChannel, googleDocUrl);
+
+  sendSlackMessageToChannel(config.SLACK_INCIDENTS_CHANNEL, slackMessage);
+  setTimeout(function () {
+      sendSlackMessageToChannel(incidentSlackChannel, slackMessage)
+    },
+    500
+  );
 }
 
 function createSlackChannel (incidentId) {
   var incidentSlackChannel = config.SLACK_INCIDENT_CHANNEL_PREFIX + incidentId;
 
+  // return config.SLACK_INCIDENT_CHANNEL_PREFIX + '000000';
+
   request.post({
     url:'https://slack.com/api/channels.create',
     form: {
       token: config.SLACK_TOKEN,
-      name: incidentSlackChannel
+      name: '#' + incidentSlackChannel
     }
   },
   function(error, response, body) {
     if (error) {
-      return console.error('Creating slack channel failed:', error);
+      console.error('Creating Slack channel failed:', error);
+
+      throw new Error('Creating Slack channel failed');
     }
   });
 
   return incidentSlackChannel;
+}
+
+function sendSlackMessageToChannel(slackChannel, slackMessage) {
+  const newMessage = {
+    ...slackMessage,
+    channel: '#' + slackChannel
+  };
+
+  console.log(newMessage);
+
+  request.post({
+    url:'https://slack.com/api/chat.postMessage',
+    auth: {
+      'bearer': config.SLACK_TOKEN
+    },
+    json: newMessage
+  },
+  function(error, response, body) {
+    if (error) {
+      console.error('Sending message to Slack channel failed:', error);
+
+      throw new Error('Sending message to Slack channel failed');
+    }
+  });
 }
 
 function createGoogleDoc(incidentId, incidentName) {
@@ -116,7 +161,7 @@ function createGoogleDoc(incidentId, incidentName) {
   console.log('Google result: ', result);
   */
 
-  return 'Make a copy of https://docs.google.com/document/d/1h5rMIrsvXQzwsKU7-tfnbcPLnqMx6omKu32YJxzbwsY/edit'
+  return 'Use following template and share in incident slack channel: https://docs.google.com/document/d/' + config.GOOGLE_DOCS_FILE_ID + '/template/preview'
 }
 
 exports.incident = (req, res) => {
@@ -125,10 +170,10 @@ exports.incident = (req, res) => {
 
     verifySlackWebhook(req.body);
 
-    var slackMessage = createIncidentFlow(req.body);
+    createIncidentFlow(req.body);
 
-    res.json(slackMessage);
+    res.status(200).json({message: "Request accepted"});
   } catch (error) {
-      res.status((error.code ? error.code : 500)).json({message: error.message});
+      res.status((error.code ? error.code : 500)).json({response_type: "in_channel", text: error.message});
   }
 };
