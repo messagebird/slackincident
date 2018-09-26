@@ -1,7 +1,6 @@
 'use strict';
 
-const config = require('./config.json');
-const {google} = require('googleapis');
+// const {google} = require('googleapis');
 const request = require('request');
 const moment = require('moment');
 
@@ -35,7 +34,7 @@ function formatSlackMessage (incidentId, incidentName, slackUserName, incidentSl
   slackMessage.attachments.push({
       color: '#228B22',
       title: 'Incident Google Meet',
-      text: 'https://hangouts.google.com/hangouts/_/meet/' + config.GOOGLE_DOMAIN + '/incident-' + incidentId
+      text: 'https://hangouts.google.com/hangouts/_/meet/' + process.env.GOOGLE_DOMAIN + '/incident-' + incidentId
   });
 
   // Google Doc
@@ -57,7 +56,7 @@ function verifyPostRequest(method) {
 }
 
 function verifySlackWebhook (body) {
-  if (!body || body.token !== config.SLACK_TOKEN) {
+  if (!body || body.token !== process.env.SLACK_TOKEN) {
     const error = new Error('Invalid credentials');
     error.code = 401;
     throw error;
@@ -75,7 +74,7 @@ function createIncidentFlow (body) {
   // Return a formatted message
   var slackMessage = formatSlackMessage(incidentId, incidentName, incidentManagerSlackHandle, incidentSlackChannel, googleDocUrl);
 
-  sendSlackMessageToChannel(config.SLACK_INCIDENTS_CHANNEL, slackMessage);
+  sendSlackMessageToChannel(process.env.SLACK_INCIDENTS_CHANNEL, slackMessage);
   setTimeout(function () {
       sendSlackMessageToChannel(incidentSlackChannel, slackMessage)
     },
@@ -84,14 +83,14 @@ function createIncidentFlow (body) {
 }
 
 function createSlackChannel (incidentId) {
-  var incidentSlackChannel = config.SLACK_INCIDENT_CHANNEL_PREFIX + incidentId;
+  var incidentSlackChannel = process.env.SLACK_INCIDENT_CHANNEL_PREFIX + incidentId;
 
-  // return config.SLACK_INCIDENT_CHANNEL_PREFIX + '000000';
+  // return process.env.SLACK_INCIDENT_CHANNEL_PREFIX + '000000';
 
   request.post({
     url:'https://slack.com/api/channels.create',
     form: {
-      token: config.SLACK_TOKEN,
+      token: process.env.SLACK_TOKEN,
       name: '#' + incidentSlackChannel
     }
   },
@@ -117,7 +116,7 @@ function sendSlackMessageToChannel(slackChannel, slackMessage) {
   request.post({
     url:'https://slack.com/api/chat.postMessage',
     auth: {
-      'bearer': config.SLACK_TOKEN
+      'bearer': process.env.SLACK_TOKEN
     },
     json: newMessage
   },
@@ -135,11 +134,11 @@ function createGoogleDoc(incidentId, incidentName) {
   /*
   var googleDrive = google.drive({
     version: 'v3',
-    auth: config.GOOGLE_API_KEY
+    auth: process.env.GOOGLE_API_KEY
   });
 
   var params = {
-    fileId: config.GOOGLE_DOCS_FILE_ID,
+    fileId: process.env.GOOGLE_DOCS_FILE_ID,
     supportsTeamDrives: true,
     resource: {
       title: 'Incident: ' + incidentName + ' (' + incidentId + ')' 
@@ -161,7 +160,7 @@ function createGoogleDoc(incidentId, incidentName) {
   console.log('Google result: ', result);
   */
 
-  return 'Use following template and share in incident slack channel: https://docs.google.com/document/d/' + config.GOOGLE_DOCS_FILE_ID + '/template/preview'
+  return 'Use following template and share in incident slack channel: https://docs.google.com/document/d/' + process.env.GOOGLE_DOCS_FILE_ID + '/template/preview'
 }
 
 exports.incident = (req, res) => {
