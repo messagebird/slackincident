@@ -7,10 +7,9 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js"
   },
-  "author": "",
+  "author": "René Feiner - MessageBird",
   "license": "ISC",
   "dependencies": {
-    "googleapis": "^33.0.0",
     "moment": "^2.22.2",
     "request": "^2.88.0"
   }

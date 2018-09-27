@@ -2,7 +2,7 @@
 
 const http = require('http');
 const qs = require('querystring');
-// const {google} = require('googleapis');
+// const {google} = require('googleapis'); // Add "googleapis": "^33.0.0", to package.json 'dependencies' when you enable this again.
 const request = require('request');
 const moment = require('moment');
 
@@ -10,7 +10,7 @@ function formatSlackMessage (incidentId, incidentName, slackUserName, incidentSl
   // Prepare a rich Slack message
   // See https://api.slack.com/docs/message-formatting
   var slackMessage = {
-    username: 'Incident Bot',
+    username: 'Incident Management',
     icon_emoji: ':warning:',
     channel: '',
     attachments: [],
