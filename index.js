@@ -1,5 +1,7 @@
 'use strict';
 
+const http = require('http');
+const qs = require('querystring');
 // const {google} = require('googleapis');
 const request = require('request');
 const moment = require('moment');
@@ -11,37 +13,38 @@ function formatSlackMessage (incidentId, incidentName, slackUserName, incidentSl
     username: 'Incident Bot',
     icon_emoji: ':warning:',
     channel: '',
-    text: incidentName,
     attachments: [],
     link_names: true,
-    parse: 'full'
+    parse: 'full',
   };
 
   slackMessage.attachments.push({
       color: '#000000',
-      title: "Reported by",
-      text: `@${slackUserName}`
+      title: "Incident",
+      text: incidentName,
+      footer: `reported by @${slackUserName}`
   });
 
   // Slack channel
   slackMessage.attachments.push({
       color: '#8f0000',
-      title: 'Incident Slack channel',
+      title: 'Slack channel',
       text: '#' + incidentSlackChannel
   });
 
   // Hangout link
   slackMessage.attachments.push({
       color: '#228B22',
-      title: 'Incident Google Meet',
-      text: 'https://hangouts.google.com/hangouts/_/meet/' + process.env.GOOGLE_DOMAIN + '/incident-' + incidentId
+      title: 'Google Meet Meeting',
+      title_link: 'https://hangouts.google.com/hangouts/_/meet/' + process.env.GOOGLE_DOMAIN + '/incident-' + incidentId
   });
 
   // Google Doc
   slackMessage.attachments.push({
       color: '#3367d6',
-      title: 'Incident Document',
-      text: googleDocUrl
+      title: 'Document',
+      title_link: googleDocUrl,
+      text: 'Use linked template and share in incident slack channel'
   });
 
   return slackMessage;
@@ -74,9 +77,10 @@ function createIncidentFlow (body) {
   // Return a formatted message
   var slackMessage = formatSlackMessage(incidentId, incidentName, incidentManagerSlackHandle, incidentSlackChannel, googleDocUrl);
 
-  sendSlackMessageToChannel(process.env.SLACK_INCIDENTS_CHANNEL, slackMessage);
+  // Bit of delay before posting message to channels, to make sure channel is created
   setTimeout(function () {
-      sendSlackMessageToChannel(incidentSlackChannel, slackMessage)
+      sendSlackMessageToChannel(process.env.SLACK_INCIDENTS_CHANNEL, slackMessage);
+      // sendSlackMessageToChannel(incidentSlackChannel, slackMessage)
     },
     500
   );
@@ -110,8 +114,6 @@ function sendSlackMessageToChannel(slackChannel, slackMessage) {
     ...slackMessage,
     channel: '#' + slackChannel
   };
-
-  console.log(newMessage);
 
   request.post({
     url:'https://slack.com/api/chat.postMessage',
@@ -160,19 +162,38 @@ function createGoogleDoc(incidentId, incidentName) {
   console.log('Google result: ', result);
   */
 
-  return 'Use following template and share in incident slack channel: https://docs.google.com/document/d/' + process.env.GOOGLE_DOCS_FILE_ID + '/template/preview'
+  return 'https://docs.google.com/document/d/' + process.env.GOOGLE_DOCS_FILE_ID + '/template/preview'
 }
 
-exports.incident = (req, res) => {
+http.createServer(function(req, res) {
   try {
     verifyPostRequest(req.method);
 
-    verifySlackWebhook(req.body);
+    var body = '';
+    var post = {};
+    req.on('data', function (chunk) {
+      body += chunk;
+    });
 
-    createIncidentFlow(req.body);
+    req.on('end', function () {
+      console.log('body: ' + body);
+      post = qs.parse(body);
 
-    res.status(200).json({message: "Request accepted"});
+      verifySlackWebhook(post);
+
+      createIncidentFlow(post);
+
+      console.log('Successful execution of incident flow');
+
+      res.writeHead(200, {'Content-Type': 'application/json'});
+      res.write(JSON.stringify({message: "Request accepted"}));
+      res.end();
+    });
   } catch (error) {
-      res.status((error.code ? error.code : 500)).json({response_type: "in_channel", text: error.message});
+      console.log(error);
+
+      res.writeHead((error.code ? error.code : 500), {'Content-Type': 'application/json'});
+      res.write(JSON.stringify({response_type: "in_channel", text: error.message}));
+      res.end();
   }
-};
+}).listen(process.env.PORT ? process.env.PORT : 8080);
