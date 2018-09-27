@@ -8,7 +8,7 @@ This node.js app is allowing you to start an incident management process via a [
 
 ## Setup
 * Deploy the app to any node.js enabled hosting environment, and configure the environment variables like explained below.
-* [Create a Slash Command][https://api.slack.com/slash-commands?#creating_commands] and point it to the URL where the app is hosted.
+* [Create a Slash Command](https://api.slack.com/slash-commands?#creating_commands) and point it to the URL where the app is hosted.
 * Test `/incident THIS IS A TEST INCIDENT` in your Slack workspace
 
 ### Config Environment Variables
