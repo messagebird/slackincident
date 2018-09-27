@@ -6,19 +6,21 @@ This node.js app is allowing you to start an incident management process via a [
   * A Google Hangout/Meet meeting to join to communicate with your team members
   * A Google Docs template to be copied manually (for now) to share the timelines, notes, logs, etc.
 
+This is what it looks like:   
 ![Slack message example](https://raw.githubusercontent.com/rfeiner/slackincident/master/docs/slack-message-example.png)
 
 ## Setup
-* Deploy the app to any node.js enabled hosting environment, and configure the environment variables like explained below.
+* Deploy the app to any node.js enabled hosting environment ([Heroku?](https://www.heroku.com)), and configure the environment variables like explained below.
 * [Create a Slash Command](https://api.slack.com/slash-commands?#creating_commands) and point it to the URL where the app is hosted.
+  * Update the Command token in the environment variables.
 * Test `/incident TEST!!! This is a test of an incident slack command` in your Slack workspace
 
 ### Config Environment Variables
 * `SLACK_COMMAND_TOKEN`: Your slack command token (generated when you create a slash Slack command).
 * `SLACK_API_TOKEN`: [Legacy Slack API token](https://api.slack.com/custom-integrations/legacy-tokens).
-* `SLACK_INCIDENTS_CHANNEL`: The incidents Slack channel where all incidents are shared (e.g. tech-incidents).
+* `SLACK_INCIDENTS_CHANNEL`: The incidents Slack channel where all incidents are shared (e.g. `tech-incidents`).
 * `SLACK_INCIDENT_CHANNEL_PREFIX`: Slack channel for the incident postfixed with timestamp (e.g. `incident-`).
-* `GOOGLE_DOMAIN`: The domain of your organisation that you're using in Google G-Suite.
+* `GOOGLE_DOMAIN`: The domain of your organisation that you're using in Google G-Suite (e.g. `messagebird.com`).
 * `GOOGLE_DOCS_FILE_ID`: The Google Docs file ID of the Incident management document you want the team to use to fill to dump info during incident.
 
 ## Todo / Wishlist
