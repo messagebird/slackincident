@@ -186,7 +186,7 @@ http.createServer(function(req, res) {
       console.log('Successful execution of incident flow');
 
       res.writeHead(200, {'Content-Type': 'application/json'});
-      res.write(JSON.stringify({message: "Request accepted"}));
+      res.write(JSON.stringify({text: "Incident management process started"}));
       res.end();
     });
   } catch (error) {
