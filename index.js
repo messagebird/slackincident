@@ -59,7 +59,7 @@ function verifyPostRequest(method) {
 }
 
 function verifySlackWebhook (body) {
-  if (!body || body.token !== process.env.SLACK_TOKEN) {
+  if (!body || body.token !== process.env.SLACK_COMMAND_TOKEN) {
     const error = new Error('Invalid credentials');
     error.code = 401;
     throw error;
@@ -94,7 +94,7 @@ function createSlackChannel (incidentId) {
   request.post({
     url:'https://slack.com/api/channels.create',
     form: {
-      token: process.env.SLACK_TOKEN,
+      token: process.env.SLACK_API_TOKEN,
       name: '#' + incidentSlackChannel
     }
   },
@@ -118,7 +118,7 @@ function sendSlackMessageToChannel(slackChannel, slackMessage) {
   request.post({
     url:'https://slack.com/api/chat.postMessage',
     auth: {
-      'bearer': process.env.SLACK_TOKEN
+      'bearer': process.env.SLACK_API_TOKEN
     },
     json: newMessage
   },
