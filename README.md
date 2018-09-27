@@ -7,7 +7,9 @@ This node.js app is allowing you to start an incident management process via a [
   * A Google Docs template to be copied manually (for now) to share the timelines, notes, logs, etc.
 
 ## Setup
-Deploy the app to any node.js enabled hosting environment. And configure the environment variables like explained below.
+* Deploy the app to any node.js enabled hosting environment, and configure the environment variables like explained below.
+* [Create a Slash Command][https://api.slack.com/slash-commands?#creating_commands] and point it to the URL where the app is hosted.
+* Test `/incident THIS IS A TEST INCIDENT` in your Slack workspace
 
 ### Config Environment Variables
 * `SLACK_COMMAND_TOKEN`: Your slack command token (generated when you create a slash Slack command).
