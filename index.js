@@ -80,7 +80,7 @@ function createIncidentFlow (body) {
   // Bit of delay before posting message to channels, to make sure channel is created
   setTimeout(function () {
       sendSlackMessageToChannel(process.env.SLACK_INCIDENTS_CHANNEL, slackMessage);
-      // sendSlackMessageToChannel(incidentSlackChannel, slackMessage)
+      sendSlackMessageToChannel(incidentSlackChannel, slackMessage)
     },
     500
   );
