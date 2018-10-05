@@ -67,7 +67,7 @@ function verifySlackWebhook (body) {
 }
 
 function createIncidentFlow (body) {
-  var incidentId = moment().format('YYMMDDhhmm');
+  var incidentId = moment().format('YYMMDDHHmm');
   var incidentName = body.text;
   var incidentManagerSlackHandle = body.user_name;
 
