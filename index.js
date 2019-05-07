@@ -69,13 +69,15 @@ function verifySlackWebhook (body) {
 function createIncidentFlow (body) {
   var incidentId = moment().format('YYMMDDHHmm');
   var incidentName = body.text;
-  var incidentManagerSlackHandle = body.user_name;
+  var incidentCreatorSlackHandle = body.user_name;
 
   var incidentSlackChannel = createSlackChannel(incidentId);
   var googleDocUrl = createGoogleDoc(incidentId, incidentName);
 
+  alertIncidentManager(incidentName, incidentSlackChannel, incidentCreatorSlackHandle);
+
   // Return a formatted message
-  var slackMessage = formatSlackMessage(incidentId, incidentName, incidentManagerSlackHandle, incidentSlackChannel, googleDocUrl);
+  var slackMessage = formatSlackMessage(incidentId, incidentName, incidentCreatorSlackHandle, incidentSlackChannel, googleDocUrl);
 
   // Bit of delay before posting message to channels, to make sure channel is created
   setTimeout(function () {
@@ -107,6 +109,21 @@ function createSlackChannel (incidentId) {
   });
 
   return incidentSlackChannel;
+}
+
+function alertIncidentManager(incidentName, incidentSlackChannel, incidentCreatorSlackHandle) {
+  request.post({
+    url: "https://events.pagerduty.com/v2/enqueue",
+    json: {
+      "routing_key": process.env.PAGERDUTY_API_TOKEN,
+      "event_action": "trigger",
+      "payload": {
+        "summary": "New incident '" + incidentName + "' created by " + incidentCreatorSlackHandle,
+        "source": incidentSlackChannel,
+        "severity": "critical"
+      },
+    }
+  })
 }
 
 function sendSlackMessageToChannel(slackChannel, slackMessage) {
@@ -143,7 +160,7 @@ function createGoogleDoc(incidentId, incidentName) {
     fileId: process.env.GOOGLE_DOCS_FILE_ID,
     supportsTeamDrives: true,
     resource: {
-      title: 'Incident: ' + incidentName + ' (' + incidentId + ')' 
+      title: 'Incident: ' + incidentName + ' (' + incidentId + ')'
     }
   };
 
