@@ -6,7 +6,7 @@ This node.js app is allowing you to start an incident management process via a [
   * A Google Hangout/Meet meeting to join to communicate with your team members
   * A Google Docs template to be copied manually (for now) to share the timelines, notes, logs, etc.
 
-This is what it looks like:   
+This is what it looks like:
 ![Slack message example](https://raw.githubusercontent.com/rfeiner/slackincident/master/docs/slack-message-example.png)
 
 ## Setup
@@ -22,6 +22,7 @@ This is what it looks like:
 * `SLACK_INCIDENT_CHANNEL_PREFIX`: Slack channel for the incident postfixed with timestamp (e.g. `incident-`).
 * `GOOGLE_DOMAIN`: The domain of your organisation that you're using in Google G-Suite (e.g. `messagebird.com`).
 * `GOOGLE_DOCS_FILE_ID`: The Google Docs file ID of the Incident management document you want the team to use to fill to dump info during incident.
+* `PAGERDUTY_API_TOKEN`: The Pagerduty API token used to page an incident manager
 
 ## Todo / Wishlist
 * Automate the copy of the Google Doc Incident Template and link to the new document

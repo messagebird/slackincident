@@ -112,13 +112,17 @@ function createSlackChannel (incidentId) {
 }
 
 function alertIncidentManager(incidentName, incidentSlackChannel, incidentCreatorSlackHandle) {
+  if (!process.env.PAGERDUTY_API_TOKEN) {
+    return
+  }
+
   request.post({
     url: "https://events.pagerduty.com/v2/enqueue",
     json: {
       "routing_key": process.env.PAGERDUTY_API_TOKEN,
       "event_action": "trigger",
       "payload": {
-        "summary": "New incident '" + incidentName + "' created by " + incidentCreatorSlackHandle,
+        "summary": "New incident '" + incidentName + "' created by @" + incidentCreatorSlackHandle,
         "source": incidentSlackChannel,
         "severity": "critical"
       },
