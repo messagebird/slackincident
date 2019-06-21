@@ -50,6 +50,16 @@ function formatSlackMessage (incidentId, incidentName, slackUserName, incidentSl
   return slackMessage;
 }
 
+function addEpicToMessage(slackMessage, epicUrl){
+  // Epic link
+  slackMessage.attachments.push({
+    color: '#FD6A02',
+    title: 'Follow-up actions',
+    title_link: epicUrl,
+    text: 'Use this to track the follow-up actions of this incident'
+  });
+}
+
 function verifyPostRequest(method) {
   if (method !== 'POST') {
     const error = new Error('Only POST requests are accepted');
@@ -74,17 +84,24 @@ function createIncidentFlow (body) {
   var incidentSlackChannel = createSlackChannel(incidentId);
   var googleDocUrl = createGoogleDoc(incidentId, incidentName);
 
+  //Sending a object as an argument to have it populated with the response
+  var epic = new Object();
+  createFollowupsEpic(incidentName, epic);
+
   alertIncidentManager(incidentName, incidentSlackChannel, incidentCreatorSlackHandle);
 
   // Return a formatted message
   var slackMessage = formatSlackMessage(incidentId, incidentName, incidentCreatorSlackHandle, incidentSlackChannel, googleDocUrl);
 
-  // Bit of delay before posting message to channels, to make sure channel is created
+  // Bit of delay before posting message to channels, to make sure channel and epic are created
   setTimeout(function () {
+      if(epic['url']){//This will only be populated if Jira is enabled and the response was already returned.
+        addEpicToMessage(slackMessage,epic['url']);
+      }
       sendSlackMessageToChannel(process.env.SLACK_INCIDENTS_CHANNEL, slackMessage);
       sendSlackMessageToChannel(incidentSlackChannel, slackMessage)
     },
-    500
+    1500
   );
 }
 
@@ -149,6 +166,50 @@ function sendSlackMessageToChannel(slackChannel, slackMessage) {
 
       throw new Error('Sending message to Slack channel failed');
     }
+  });
+}
+
+function createFollowupsEpic(incidentName, epicResponse) {
+  var jiraDomain = process.env.JIRA_DOMAIN;
+  //Return if JIRA details are not specified. Assuming checking the domain is enough
+  if (!jiraDomain) {
+    return
+  }
+
+  var jiraUser = process.env.JIRA_USER;
+  var jiraApiKey = process.env.JIRA_API_KEY;
+  var jiraProjectId = process.env.JIRA_PROJECT_ID;
+  var jiraEpicIssueTypeId = process.env.JIRA_EPIC_ISSUE_TYPE_ID;
+
+  const newMessage =   {
+    "fields": {
+      "issuetype": {
+        "id": jiraEpicIssueTypeId
+      },
+      "project": {
+        "id": jiraProjectId
+      },
+      "summary": "Incident " + incidentName
+    }
+  };
+
+  var epicKey;
+  request.post({
+    url:'https://'+jiraDomain+'/rest/api/3/issue',
+    auth: {
+      'user': jiraUser,
+      'pass':jiraApiKey
+    },
+    json: newMessage
+  },
+  function(error, response, body) {
+    if (error) {
+      console.error('Sending message to Jira failed:', error);
+
+      throw new Error('Sending message to Jira failed');
+    }
+    epicKey = response.body['key'];
+    epicResponse['url'] = epicKey?'https://'+jiraDomain+'/browse/'+epicKey:'';
   });
 }
 
