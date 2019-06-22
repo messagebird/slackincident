@@ -16,13 +16,17 @@ This is what it looks like:
 * Test `/incident TEST!!! This is a test of an incident slack command` in your Slack workspace
 
 ### Config Environment Variables
+#### Slack Integration
 * `SLACK_COMMAND_TOKEN`: Your slack command token (generated when you create a slash Slack command).
 * `SLACK_API_TOKEN`: [Legacy Slack API token](https://api.slack.com/custom-integrations/legacy-tokens).
 * `SLACK_INCIDENTS_CHANNEL`: The incidents Slack channel where all incidents are shared (e.g. `tech-incidents`).
 * `SLACK_INCIDENT_CHANNEL_PREFIX`: Slack channel for the incident postfixed with timestamp (e.g. `incident-`).
+#### Google Docs Integration
 * `GOOGLE_DOMAIN`: The domain of your organisation that you're using in Google G-Suite (e.g. `messagebird.com`).
 * `GOOGLE_DOCS_FILE_ID`: The Google Docs file ID of the Incident management document you want the team to use to fill to dump info during incident.
+#### Pagerduty integration
 * `PAGERDUTY_API_TOKEN`: The Pagerduty API token used to page an incident manager
+#### Jira Integration
 * `JIRA_DOMAIN`: The domain of your organisation that you're using for Jira (e.g. `messagebird.atlassian.net`)
 * `JIRA_USER`: User name to authenticate the requests to Jira;
 * `JIRA_API_KEY`: API KEY associated to the given user name. It can be generated through `https://id.atlassian.com`.
