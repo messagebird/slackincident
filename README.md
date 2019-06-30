@@ -31,7 +31,16 @@ This is what it looks like:
 * `JIRA_USER`: User name to authenticate the requests to Jira;
 * `JIRA_API_KEY`: API KEY associated to the given user name. It can be generated through `https://id.atlassian.com`.
 * `JIRA_PROJECT_ID`: ID of the Jira Project that will be used to track follow-up actions
-* `JIRA_EPIC_ISSUE_TYPE_ID`: IssueTypeId for epics in the specified project. Can be obtained thorugh API call `rest/api/3/issue/createmeta`.
+* `JIRA_ISSUE_TYPE_ID`: IssueTypeId used to create main task in the specified project. Can be obtained thorugh API call `rest/api/3/issue/createmeta`. Most commonly used type id is the one associated to epic in the specified project.
+#### Google Calendar/Meet integration
+
+The supported authentication method is OAuth 2.0. The details below are generated in the cloiud console, in https://console.cloud.google.com/apis/credentials. Create and Create OAuth client ID of type 'Other' and you will get the info need to start. Remember to enable the Calendar API in your account.
+
+* `GOOGLEAPI_CLIENT_ID`: The client ID of your credentials
+* `GOOGLEAPI_CLIENT_SECRET`: The client secret of your credentials
+* `GOOGLE_AUTHORIZATION_TOKEN`: A generated token which is obtained after user gives the permissions. The 'generate_googleapi_token.js' script helps you to obatin the token.
+* `GOOGLE_CALENDAR_ID`: Id of the calendar where the incident details will be saved. Optional. default: primary
+* `GOOGLE_CALENDAR_TIMEZONE`: Timezone of the events. Optional. Default: Europe/Amsterdam
 
 ## Todo / Wishlist
 * Automate the copy of the Google Doc Incident Template and link to the new document
