@@ -79,7 +79,7 @@ function sendConferenceCallDetailsToChannel(incidentSlackChannel, eventDetails){
     if(type == 'video'){
       title_link = entryPoint.uri;
       text = entryPoint.label;
-    } 
+    }
     if(type == 'phone'){
       tel_link = entryPoint.uri;
       tel = entryPoint.label;
@@ -99,7 +99,7 @@ function sendConferenceCallDetailsToChannel(incidentSlackChannel, eventDetails){
     "fields": [
         {
             "title": "Join by phone",
-            "value": "<"+tel_link+"|"+tel+"> | PIN: "+pin+"‬#",
+            "value": "<"+tel_link+"|"+tel+"> | PIN: "+pin+"#",
             "short": false
         }
     ],
@@ -182,7 +182,7 @@ function createSlackChannel (incidentId) {
     prefix = 'incident-';
   }
   var incidentSlackChannel = prefix + incidentId;
-  
+
 
   // return process.env.SLACK_INCIDENT_CHANNEL_PREFIX + '000000';
 
