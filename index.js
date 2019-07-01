@@ -99,7 +99,7 @@ function sendConferenceCallDetailsToChannel(incidentSlackChannel, eventDetails){
     "fields": [
         {
             "title": "Join by phone",
-            "value": "<"+tel_link+"|"+tel+"> | PIN: "+pin+"#",
+            "value": tel + " | PIN: " + pin + "#",
             "short": false
         }
     ],
