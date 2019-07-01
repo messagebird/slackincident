@@ -30,9 +30,9 @@ exports.registerIncidentEvent =  function registerIncidentEvent(incidentId, inci
                               "<small>" +
                               "Incident response triggered on " + now.format("DD/MM/YYYY HH:mm") + "\n" +
                               "Reported by " + reportedBy + "\n" +
-                              (slackChannel?"<a href='https://slack.com/app_redirect?" + slackChannel+ "'>Incident Slack Channel</a>\n":'')+
+                              (slackChannel?"<a href='https://slack.com/app_redirect?channel=" + slackChannel+ "'>Incident Slack Channel</a>\n":'')+
                               "</small>";
-                              
+
     createEvent(oAuth2Client, incidentName, incidentId, eventDescription, eventHandle);
 }
 
