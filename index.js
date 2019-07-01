@@ -168,11 +168,17 @@ function createIncidentFlow (body) {
       if(eventDetails['obj']){
         sendConferenceCallDetailsToChannel(incidentSlackChannel, eventDetails);
       }
-      if(epic['url']){//This will only be populated if Jira is enabled and the response was already returned.
+    },
+    3000
+  );
+
+  setTimeout(function () {
+      //This will only be populated if Jira is enabled and the response was already returned.
+      if(epic['url']){
         sendEpicToChannel(incidentSlackChannel, epic['url']);
       }
     },
-    3000
+    4000
   );
 }
 
