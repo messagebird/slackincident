@@ -112,7 +112,8 @@ function sendConferenceCallDetailsToChannel(incidentSlackChannel, eventDetails){
     channel: '',
     attachments: [],
     link_names: true,
-    parse: 'full',
+    parse: 'none',
+    mrkdwn: true,
   };
   slackMessage.attachments.push(confDetailsMessage);
   sendSlackMessageToChannel(incidentSlackChannel, slackMessage);
