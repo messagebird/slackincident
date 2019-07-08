@@ -207,15 +207,12 @@ function createIncidentFlow (body) {
   );
 }
 
-function createSlackChannel (incidentId) {
+function createSlackChannel (incidentId, incidentName) {
   var prefix = process.env.SLACK_INCIDENT_CHANNEL_PREFIX;
   if(!prefix){
     prefix = 'incident-';
   }
   var incidentSlackChannel = prefix + incidentId;
-
-
-  // return process.env.SLACK_INCIDENT_CHANNEL_PREFIX + '000000';
 
   request.post({
     url:'https://slack.com/api/channels.create',
@@ -227,9 +224,25 @@ function createSlackChannel (incidentId) {
   function(error, response, body) {
     if (error) {
       console.error('Creating Slack channel failed:', error);
-
       throw new Error('Creating Slack channel failed');
     }
+    var obj = JSON.parse(response.body);
+    var channelId = obj.channel.id;
+    request.post({
+      url:'https://slack.com/api/channels.setTopic',
+      auth: {
+        'bearer': process.env.SLACK_API_TOKEN
+      },
+      json: {
+        'channel': channelId,
+        'topic': incidentName + '. Please join conference call. See pinned message for details.'
+      }
+    },
+    function(error, response, body) {
+      if(error || !body['ok']){
+        console.log('Error setting topic for channel'+incidentSlackChannel);
+      }
+    });
   });
 
   return incidentSlackChannel;
