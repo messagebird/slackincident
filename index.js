@@ -5,9 +5,9 @@ const qs = require('querystring');
 // const {google} = require('googleapis'); // Add "googleapis": "^33.0.0", to package.json 'dependencies' when you enable this again.
 const request = require('request');
 const moment = require('moment');
-var eventM = require("./eventDetails.js");
+var gapi_helper = require("./googleapi_helper.js");
 
-function formatSlackMessage (incidentId, incidentName, slackUserName, incidentSlackChannel, googleDocUrl) {
+function formatSlackMessage (incidentId, incidentName, slackUserName, incidentSlackChannel) {
   // Prepare a rich Slack message
   // See https://api.slack.com/docs/message-formatting
   var slackMessage = {
@@ -33,15 +33,28 @@ function formatSlackMessage (incidentId, incidentName, slackUserName, incidentSl
       text: '#' + incidentSlackChannel
   });
 
+  return slackMessage;
+}
+
+function sendIncidentLogFileToChannel(incidentSlackChannel, docUrl){
+  var slackMessage = {
+    username: 'During the incident',
+    icon_emoji: ':pencil:',
+    channel: '',
+    attachments: [],
+    link_names: true,
+    parse: 'full',
+  };
+
   // Google Doc
   slackMessage.attachments.push({
       color: '#3367d6',
       title: 'Document',
-      title_link: googleDocUrl,
-      text: 'Use linked template and share in incident slack channel'
+      title_link: docUrl,
+      text: docUrl,
+      footer: 'Use this document to take notes during the incident'
   });
-
-  return slackMessage;
+  sendSlackMessageToChannel(incidentSlackChannel, slackMessage);
 }
 
 function sendEpicToChannel(incidentSlackChannel, epicUrl){
@@ -140,21 +153,23 @@ function createIncidentFlow (body) {
   var incidentName = body.text;
   var incidentCreatorSlackHandle = body.user_name;
 
-  var incidentSlackChannel = createSlackChannel(incidentId);
-  var googleDocUrl = createGoogleDoc(incidentId, incidentName);
+  var incidentSlackChannel = createSlackChannel(incidentId, incidentName);
 
   //Sending a object as an argument to have it populated with the response
   var epic = new Object();
   createFollowupsEpic(incidentName, epic);
 
   var eventDetails = new Object();
-  eventM.registerIncidentEvent(incidentId, incidentName, incidentCreatorSlackHandle, incidentSlackChannel, eventDetails);
+  gapi_helper.registerIncidentEvent(incidentId, incidentName, incidentCreatorSlackHandle, incidentSlackChannel, eventDetails);
 
+  var docDetails = new Object();
+  var fileName = incidentSlackChannel;
+  gapi_helper.createIncidentsLogFile(fileName,process.env.GDRIVE_INCIDENT_NOTES_FOLDER,incidentName,incidentCreatorSlackHandle, docDetails);
 
   alertIncidentManager(incidentName, incidentSlackChannel, incidentCreatorSlackHandle);
 
   // Return a formatted message
-  var slackMessage = formatSlackMessage(incidentId, incidentName, incidentCreatorSlackHandle, incidentSlackChannel, googleDocUrl);
+  var slackMessage = formatSlackMessage(incidentId, incidentName, incidentCreatorSlackHandle, incidentSlackChannel);
 
   // Bit of delay before posting message to channels, to make sure channel and epic are created
   setTimeout(function () {
@@ -171,6 +186,15 @@ function createIncidentFlow (body) {
       }
     },
     3000
+  );
+
+  setTimeout(function () {
+      //This will only be populated if Jira is enabled and the response was already returned.
+      if(docDetails['url']){
+        sendIncidentLogFileToChannel(incidentSlackChannel, docDetails['url']);
+      }
+    },
+    3200
   );
 
   setTimeout(function () {
@@ -299,40 +323,6 @@ function createFollowupsEpic(incidentName, epicResponse) {
     epicKey = response.body['key'];
     epicResponse['url'] = epicKey?'https://'+jiraDomain+'/browse/'+epicKey:'';
   });
-}
-
-function createGoogleDoc(incidentId, incidentName) {
-  // Disabled for now, because it's not so easy to grant Drive access via API on single/some files/folders
-  /*
-  var googleDrive = google.drive({
-    version: 'v3',
-    auth: process.env.GOOGLE_API_KEY
-  });
-
-  var params = {
-    fileId: process.env.GOOGLE_DOCS_FILE_ID,
-    supportsTeamDrives: true,
-    resource: {
-      title: 'Incident: ' + incidentName + ' (' + incidentId + ')'
-    }
-  };
-
-  var result = googleDrive.files.copy(params)
-    .then(res => {
-      console.log(`New document ID is ${res.fileId}`);
-
-      return 'https://docs.google.com/document/d/' + res.fileId;
-    })
-    .catch(error => {
-      console.error('Copying Google Document failed', error);
-
-      return 'Copying Google Document failed';
-    });
-
-  console.log('Google result: ', result);
-  */
-
-  return 'https://docs.google.com/document/d/' + process.env.GOOGLE_DOCS_FILE_ID + '/template/preview'
 }
 
 http.createServer(function(req, res) {
