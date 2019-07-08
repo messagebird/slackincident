@@ -116,7 +116,7 @@ function sendConferenceCallDetailsToChannel(incidentSlackChannel, eventDetails){
     mrkdwn: true,
   };
   slackMessage.attachments.push(confDetailsMessage);
-  sendSlackMessageToChannel(incidentSlackChannel, slackMessage);
+  sendSlackMessageToChannel(incidentSlackChannel, slackMessage, true);
 }
 
 function verifyPostRequest(method) {
