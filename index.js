@@ -154,10 +154,7 @@ function createIncidentFlow (body) {
   var incidentCreatorSlackHandle = body.user_name;
 
   var incidentSlackChannel = createSlackChannel(incidentId, incidentName);
-
-  //Sending a object as an argument to have it populated with the response
-  var epic = new Object();
-  createFollowupsEpic(incidentName, epic);
+  alertIncidentManager(incidentName, incidentSlackChannel, incidentCreatorSlackHandle);
 
   var eventDetails = new Object();
   gapi_helper.registerIncidentEvent(incidentId, incidentName, incidentCreatorSlackHandle, incidentSlackChannel, eventDetails);
@@ -166,7 +163,9 @@ function createIncidentFlow (body) {
   var fileName = incidentSlackChannel;
   gapi_helper.createIncidentsLogFile(fileName,process.env.GDRIVE_INCIDENT_NOTES_FOLDER,incidentName,incidentCreatorSlackHandle, docDetails);
 
-  alertIncidentManager(incidentName, incidentSlackChannel, incidentCreatorSlackHandle);
+  //Sending a object as an argument to have it populated with the response
+  var epic = new Object();
+  createFollowupsEpic(incidentName, epic);
 
   // Return a formatted message
   var slackMessage = formatSlackMessage(incidentId, incidentName, incidentCreatorSlackHandle, incidentSlackChannel);
@@ -203,7 +202,7 @@ function createIncidentFlow (body) {
         sendEpicToChannel(incidentSlackChannel, epic['url']);
       }
     },
-    4000
+    3500
   );
 }
 
