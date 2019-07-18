@@ -19,7 +19,7 @@ function init(){
   if(!CLIENT_ID){
     askClientId();
   } else{
-
+    askClientSecret();
   }
 }
 
@@ -41,15 +41,17 @@ function askClientId(){
 }
 
 function askClientSecret(){
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-  rl.question('Enter the client secret of your credentials: ', (client_secret) => {
-    rl.close();
-    CLIENT_SECRET = client_secret;
-    authorize();
-  });
+  if(!CLIENT_SECRET){
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+    rl.question('Enter the client secret of your credentials: ', (client_secret) => {
+      rl.close();
+      CLIENT_SECRET = client_secret;
+    });
+  }
+  authorize();
 }
 
 function authorize() {
