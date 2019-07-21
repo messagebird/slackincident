@@ -161,12 +161,13 @@ function createIncidentFlow (body) {
   var incidentId = moment().format('YYMMDDHHmm');
   var incidentName = body.text;
   var incidentCreatorSlackHandle = body.user_name;
+  var incidentCreatorSlackUserId = body.user_id;
 
-  var incidentSlackChannel = createSlackChannel(incidentId, incidentName, incidentCreatorSlackHandle);
+  var incidentSlackChannel = createSlackChannel(incidentId, incidentName, incidentCreatorSlackHandle, incidentCreatorSlackUserId);
   alertIncidentManager(incidentName, incidentSlackChannel, incidentCreatorSlackHandle);
 }
 
-function createSlackChannel (incidentId, incidentName, incidentCreatorSlackHandle) {
+function createSlackChannel (incidentId, incidentName, incidentCreatorSlackHandle, incidentCreatorSlackUserId) {
   var prefix = process.env.SLACK_INCIDENT_CHANNEL_PREFIX;
   if(!prefix){
     prefix = 'incident-';
@@ -187,13 +188,13 @@ function createSlackChannel (incidentId, incidentName, incidentCreatorSlackHandl
       console.error('Creating Slack channel failed:', error);
       throw new Error('Creating Slack channel failed');
     }
-    console.log(typeof response.body);
     var obj = response.body;
     var channelId = obj.channel.id;
     var channelName = obj.channel.name;
 
     createAdditionalResources(incidentId, incidentName, channelId, channelName, incidentCreatorSlackHandle);
     setChannelTopic(channelId, incidentName + '. Please join conference call. See pinned message for details.');
+    inviteUser(channelId, incidentCreatorSlackUserId);
 
   });
 
@@ -263,6 +264,25 @@ function setChannelTopic(channelId, topic){
   function(error, response, body) {
     if(error || !body['ok']){
       console.log('Error setting topic for channel '+channelId);
+    }
+  });
+}
+
+function inviteUser(channelId, userId){
+  request.post({
+    url:'https://slack.com/api/channels.invite',
+    auth: {
+      'bearer': process.env.SLACK_API_TOKEN
+    },
+    json: {
+      'channel': channelId,
+      'user': userId
+    }
+  },
+  function(error, response, body) {
+    if(error || !body['ok']){
+      console.log('Error inviting user for channel');
+      console.log(body, error);
     }
   });
 }
