@@ -36,7 +36,7 @@ function createInitialMessage(incidentName, slackUserName, incidentSlackChannel,
   return slackMessage;
 }
 
-function sendIncidentLogFileToChannel(incidentSlackChannel, docUrl){
+function sendIncidentLogFileToChannel(incidentSlackChannelId, docUrl){
   var slackMessage = {
     username: 'During the incident',
     icon_emoji: ':pencil:',
@@ -54,10 +54,10 @@ function sendIncidentLogFileToChannel(incidentSlackChannel, docUrl){
       text: docUrl,
       footer: 'Use this document to to maintain a timeline of key events during an incident. Document actions, and keep track of any followup items that will need to be addressed.'
   });
-  sendSlackMessageToChannel(incidentSlackChannel, slackMessage);
+  sendSlackMessageToChannel(incidentSlackChannelId, slackMessage);
 }
 
-function sendEpicToChannel(incidentSlackChannel, epicUrl){
+function sendEpicToChannel(incidentSlackChannelId, epicUrl){
   var slackMessage = {
     username: 'After the incident',
     icon_emoji: ':dart:',
@@ -74,11 +74,11 @@ function sendEpicToChannel(incidentSlackChannel, epicUrl){
     text: epicUrl,
     footer: 'Remember: Don\'t Neglect the Post-Mortem!'
   });
-  sendSlackMessageToChannel(incidentSlackChannel, slackMessage);
+  sendSlackMessageToChannel(incidentSlackChannelId, slackMessage);
 }
 
-function sendConferenceCallDetailsToChannel(incidentSlackChannel, eventDetails){
-  var entryPoints = eventDetails.obj.data.conferenceData.entryPoints;
+function sendConferenceCallDetailsToChannel(incidentSlackChannelId, eventDetails){
+  var entryPoints = eventDetails.data.conferenceData.entryPoints;
   var title_link;
   var text;
   var more_phones_link;
@@ -138,7 +138,7 @@ function sendConferenceCallDetailsToChannel(incidentSlackChannel, eventDetails){
     mrkdwn: true,
   };
   slackMessage.attachments.push(confDetailsMessage);
-  sendSlackMessageToChannel(incidentSlackChannel, slackMessage, true);
+  sendSlackMessageToChannel(incidentSlackChannelId, slackMessage, true);
 }
 
 function verifyPostRequest(method) {
@@ -203,51 +203,33 @@ function createSlackChannel (incidentId, incidentName, incidentCreatorSlackHandl
 
 function createAdditionalResources(incidentId, incidentName, incidentSlackChannelId, incidentSlackChannel, incidentCreatorSlackHandle){
 
-  var eventDetails = new Object();
-  gapi_helper.registerIncidentEvent(incidentId, incidentName, incidentCreatorSlackHandle, incidentSlackChannel, eventDetails);
+  gapi_helper.registerIncidentEvent(incidentId,
+                                    incidentName,
+                                    incidentCreatorSlackHandle,
+                                    incidentSlackChannel,
+                                    function(eventDetails){
+                                      sendConferenceCallDetailsToChannel(incidentSlackChannelId, eventDetails);
+                                    });
 
-  var docDetails = new Object();
   var fileName = incidentSlackChannel;
-  gapi_helper.createIncidentsLogFile(fileName,process.env.GDRIVE_INCIDENT_NOTES_FOLDER,incidentName,incidentCreatorSlackHandle, docDetails);
+  gapi_helper.createIncidentsLogFile( fileName,
+                                      process.env.GDRIVE_INCIDENT_NOTES_FOLDER,
+                                      incidentName,
+                                      incidentCreatorSlackHandle,
+                                      function(url){
+                                        sendIncidentLogFileToChannel(incidentSlackChannelId, url);
+                                      }
+                                    );
 
-  //Sending a object as an argument to have it populated with the response
-  var epic = new Object();
-  createFollowupsEpic(incidentName, epic);
+  createFollowupsEpic(incidentName, incidentSlackChannelId);
 
   // Return a formatted message
   var slackMessage = createInitialMessage(incidentName, incidentCreatorSlackHandle, incidentSlackChannel, incidentSlackChannelId);
 
-  sendSlackMessageToChannel(process.env.SLACK_INCIDENTS_CHANNEL, slackMessage);
+  sendSlackMessageToChannel("#" + process.env.SLACK_INCIDENTS_CHANNEL, slackMessage);
   //remove join button from initial message and then send to incident channel
   slackMessage.attachments[0].actions.shift();
-  sendSlackMessageToChannel(incidentSlackChannel, slackMessage)
-
-  // Bit of delay before posting message to channels, to make sure channel and eventn and epic are created
-  setTimeout(function () {
-      if(eventDetails['obj']){
-        sendConferenceCallDetailsToChannel(incidentSlackChannel, eventDetails);
-      }
-    },
-    3000
-  );
-
-  setTimeout(function () {
-      //This will only be populated if Jira is enabled and the response was already returned.
-      if(docDetails['url']){
-        sendIncidentLogFileToChannel(incidentSlackChannel, docDetails['url']);
-      }
-    },
-    3200
-  );
-
-  setTimeout(function () {
-      //This will only be populated if Jira is enabled and the response was already returned.
-      if(epic['url']){
-        sendEpicToChannel(incidentSlackChannel, epic['url']);
-      }
-    },
-    3500
-  );
+  sendSlackMessageToChannel(incidentSlackChannelId, slackMessage)
 }
 
 function setChannelTopic(channelId, topic){
@@ -315,7 +297,7 @@ function sendSlackMessageToChannel(slackChannel, slackMessage, pin_message) {
   }
   const newMessage = {
     ...slackMessage,
-    channel: '#' + slackChannel
+    channel: slackChannel
   };
 
   request.post({
@@ -352,7 +334,7 @@ function sendSlackMessageToChannel(slackChannel, slackMessage, pin_message) {
   });
 }
 
-function createFollowupsEpic(incidentName, epicResponse) {
+function createFollowupsEpic(incidentName, incidentChannelId) {
   var jiraDomain = process.env.JIRA_DOMAIN;
   //Return if JIRA details are not specified. Assuming checking the domain is enough
   if (!jiraDomain) {
@@ -376,7 +358,6 @@ function createFollowupsEpic(incidentName, epicResponse) {
     }
   };
 
-  var epicKey;
   request.post({
     url:'https://'+jiraDomain+'/rest/api/3/issue',
     auth: {
@@ -391,8 +372,9 @@ function createFollowupsEpic(incidentName, epicResponse) {
 
       throw new Error('Sending message to Jira failed');
     }
-    epicKey = response.body['key'];
-    epicResponse['url'] = epicKey?'https://'+jiraDomain+'/browse/'+epicKey:'';
+    var epicKey = response.body['key'];
+    var epicUrl = epicKey?'https://'+jiraDomain+'/browse/'+epicKey:'';
+    sendEpicToChannel(incidentChannelId, epicUrl);
   });
 }
 

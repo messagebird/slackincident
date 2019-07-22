@@ -17,7 +17,7 @@ function getoAuth2Client(){
   return oAuth2Client;
 }
 
-exports.createIncidentsLogFile = function createIncidentsLogFile(fileName, folder, incidentTitle, reportedBy, documentHandle) {
+exports.createIncidentsLogFile = function createIncidentsLogFile(fileName, folder, incidentTitle, reportedBy, onSuccess) {
   const oAuth2Client = getoAuth2Client();
   if(!oAuth2Client){
     return;
@@ -37,8 +37,9 @@ exports.createIncidentsLogFile = function createIncidentsLogFile(fileName, folde
   }, (err, res) => {
     if (err) return console.log('The API returned an error: ' + err);
 
-    documentHandle['id'] = res.data.id;
-    documentHandle['url'] = 'https://docs.google.com/document/d/'+res.data.id;
+    var documentUrl = 'https://docs.google.com/document/d/'+res.data.id;
+    //Call on success callback
+    onSuccess(documentUrl);
     const docs = google.docs({version: 'v1', auth: oAuth2Client});
     var now = moment.utc();
 
@@ -158,7 +159,7 @@ exports.createIncidentsLogFile = function createIncidentsLogFile(fileName, folde
  * Create an OAuth2 client with the given credentials
  * @param {Object} credentials The authorization client credentials.
  */
-exports.registerIncidentEvent =  function registerIncidentEvent(incidentId, incidentName, reportedBy, slackChannel, eventHandle) {
+exports.registerIncidentEvent =  function registerIncidentEvent(incidentId, incidentName, reportedBy, slackChannel, onSuccess) {
     const oAuth2Client = getoAuth2Client();
     if(!oAuth2Client){
       return;
@@ -171,10 +172,10 @@ exports.registerIncidentEvent =  function registerIncidentEvent(incidentId, inci
                               (slackChannel?"<a href='https://slack.com/app_redirect?channel=" + slackChannel+ "'>Incident Slack Channel</a>\n":'')+
                               "</small>";
 
-    createEvent(oAuth2Client, incidentName, incidentId, eventDescription, eventHandle);
+    createEvent(oAuth2Client, incidentName, incidentId, eventDescription, onSuccess);
 }
 
-function createEvent(auth, incidentName, incidentId, incidentDescription, eventHandle){
+function createEvent(auth, incidentName, incidentId, incidentDescription, onSuccess){
   const calendar = google.calendar({version: 'v3', auth});
   var calendarId = process.env.GOOGLE_CALENDAR_ID;
   if(!calendarId){
@@ -229,7 +230,7 @@ function createEvent(auth, incidentName, incidentId, incidentDescription, eventH
               console.log('There was an error adding the conference details');
             }
             else{
-              eventHandle['obj'] = event;
+              onSuccess(event);
             }
           }
         );
