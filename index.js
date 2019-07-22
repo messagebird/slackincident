@@ -165,6 +165,7 @@ function createIncidentFlow (body) {
 
   var incidentSlackChannel = createSlackChannel(incidentId, incidentName, incidentCreatorSlackHandle, incidentCreatorSlackUserId);
   alertIncidentManager(incidentName, incidentSlackChannel, incidentCreatorSlackHandle);
+  return incidentSlackChannel;
 }
 
 function createSlackChannel (incidentId, incidentName, incidentCreatorSlackHandle, incidentCreatorSlackUserId) {
@@ -394,12 +395,12 @@ http.createServer(function(req, res) {
 
       verifySlackWebhook(post);
 
-      createIncidentFlow(post);
+      var incidentChannel = createIncidentFlow(post);
 
       console.log('Successful execution of incident flow');
 
       res.writeHead(200, {'Content-Type': 'application/json'});
-      res.write(JSON.stringify({text: "Incident management process started"}));
+      res.write(JSON.stringify({text: "Incident management process started. Join incident channel: #"+incidentChannel}));
       res.end();
     });
   } catch (error) {
