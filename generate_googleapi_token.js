@@ -3,7 +3,7 @@ const readline = require('readline');
 const {google} = require('googleapis');
 
 // If modifying these scopes, delete token_googleapi.json.
-const SCOPES = ['https://www.googleapis.com/auth/calendar.events'];
+const SCOPES = ['https://www.googleapis.com/auth/calendar.events', 'https://www.googleapis.com/auth/drive.file'];
 // The file token.json stores the user's access and refresh tokens, and is
 // created automatically when the authorization flow completes for the first
 // time.
@@ -19,7 +19,7 @@ function init(){
   if(!CLIENT_ID){
     askClientId();
   } else{
-
+    askClientSecret();
   }
 }
 
@@ -41,15 +41,17 @@ function askClientId(){
 }
 
 function askClientSecret(){
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-  rl.question('Enter the client secret of your credentials: ', (client_secret) => {
-    rl.close();
-    CLIENT_SECRET = client_secret;
-    authorize();
-  });
+  if(!CLIENT_SECRET){
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+    rl.question('Enter the client secret of your credentials: ', (client_secret) => {
+      rl.close();
+      CLIENT_SECRET = client_secret;
+    });
+  }
+  authorize();
 }
 
 function authorize() {

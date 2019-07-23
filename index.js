@@ -5,49 +5,62 @@ const qs = require('querystring');
 // const {google} = require('googleapis'); // Add "googleapis": "^33.0.0", to package.json 'dependencies' when you enable this again.
 const request = require('request');
 const moment = require('moment');
-var eventM = require("./eventDetails.js");
+var gapi_helper = require("./googleapi_helper.js");
 
-function formatSlackMessage (incidentId, incidentName, slackUserName, incidentSlackChannel, googleDocUrl) {
+function createInitialMessage(incidentName, slackUserName, incidentSlackChannel, incidentSlackChannelId) {
   // Prepare a rich Slack message
   // See https://api.slack.com/docs/message-formatting
   var slackMessage = {
     username: 'Incident Management',
     icon_emoji: ':warning:',
-    channel: '',
     attachments: [],
     link_names: true,
     parse: 'full',
   };
 
   slackMessage.attachments.push({
-      color: '#000000',
-      title: "Incident",
-      text: incidentName,
+      color: '#8f0000',
+      title: incidentName,
+      text: "Incident Channel: #"+incidentSlackChannel,
+      "fallback": "Join Incident Channel #"+incidentSlackChannel,
+      "actions": [
+        {
+          "type": "button",
+          "text": "Join Incident Channel",
+          "url": "https://slack.com/app_redirect?channel="+incidentSlackChannelId,
+          "style":"danger"
+        }
+      ],
       footer: `reported by @${slackUserName}`
   });
+  return slackMessage;
+}
 
-  // Slack channel
-  slackMessage.attachments.push({
-      color: '#8f0000',
-      title: 'Slack channel',
-      text: '#' + incidentSlackChannel
-  });
+function sendIncidentLogFileToChannel(incidentSlackChannelId, docUrl){
+  var slackMessage = {
+    username: 'During the incident',
+    icon_emoji: ':pencil:',
+    channel: '',
+    attachments: [],
+    link_names: true,
+    parse: 'full',
+  };
 
   // Google Doc
   slackMessage.attachments.push({
       color: '#3367d6',
-      title: 'Document',
-      title_link: googleDocUrl,
-      text: 'Use linked template and share in incident slack channel'
+      title: 'Notes & Actions',
+      title_link: docUrl,
+      text: docUrl,
+      footer: 'Use this document to to maintain a timeline of key events during an incident. Document actions, and keep track of any followup items that will need to be addressed.'
   });
-
-  return slackMessage;
+  sendSlackMessageToChannel(incidentSlackChannelId, slackMessage);
 }
 
-function sendEpicToChannel(incidentSlackChannel, epicUrl){
+function sendEpicToChannel(incidentSlackChannelId, epicUrl){
   var slackMessage = {
     username: 'After the incident',
-    icon_emoji: ':pencil:',
+    icon_emoji: ':dart:',
     channel: '',
     attachments: [],
     link_names: true,
@@ -61,11 +74,11 @@ function sendEpicToChannel(incidentSlackChannel, epicUrl){
     text: epicUrl,
     footer: 'Remember: Don\'t Neglect the Post-Mortem!'
   });
-  sendSlackMessageToChannel(incidentSlackChannel, slackMessage);
+  sendSlackMessageToChannel(incidentSlackChannelId, slackMessage);
 }
 
-function sendConferenceCallDetailsToChannel(incidentSlackChannel, eventDetails){
-  var entryPoints = eventDetails.obj.data.conferenceData.entryPoints;
+function sendConferenceCallDetailsToChannel(incidentSlackChannelId, eventDetails){
+  var entryPoints = eventDetails.data.conferenceData.entryPoints;
   var title_link;
   var text;
   var more_phones_link;
@@ -95,7 +108,7 @@ function sendConferenceCallDetailsToChannel(incidentSlackChannel, eventDetails){
     "color": "#1F8456",
     "title": "Join Conference Call",
     "title_link": title_link,
-    "text": text,
+    "text": title_link,
     "fields": [
         {
             "title": "Join by phone",
@@ -103,6 +116,15 @@ function sendConferenceCallDetailsToChannel(incidentSlackChannel, eventDetails){
             "short": false
         }
     ],
+    "actions": [
+      {
+        "type": "button",
+        "text": "Join Conference Call",
+        "url": title_link,
+        "style":"primary"
+      }
+    ],
+
     "footer": "Not in "+regionCode+"? More phone numbers at "+more_phones_link
   }
 
@@ -116,7 +138,7 @@ function sendConferenceCallDetailsToChannel(incidentSlackChannel, eventDetails){
     mrkdwn: true,
   };
   slackMessage.attachments.push(confDetailsMessage);
-  sendSlackMessageToChannel(incidentSlackChannel, slackMessage);
+  sendSlackMessageToChannel(incidentSlackChannelId, slackMessage, true);
 }
 
 function verifyPostRequest(method) {
@@ -139,80 +161,118 @@ function createIncidentFlow (body) {
   var incidentId = moment().format('YYMMDDHHmm');
   var incidentName = body.text;
   var incidentCreatorSlackHandle = body.user_name;
+  var incidentCreatorSlackUserId = body.user_id;
 
-  var incidentSlackChannel = createSlackChannel(incidentId);
-  var googleDocUrl = createGoogleDoc(incidentId, incidentName);
-
-  //Sending a object as an argument to have it populated with the response
-  var epic = new Object();
-  createFollowupsEpic(incidentName, epic);
-
-  var eventDetails = new Object();
-  eventM.registerIncidentEvent(incidentId, incidentName, incidentCreatorSlackHandle, incidentSlackChannel, eventDetails);
-
-
+  var incidentSlackChannel = createSlackChannel(incidentId, incidentName, incidentCreatorSlackHandle, incidentCreatorSlackUserId);
   alertIncidentManager(incidentName, incidentSlackChannel, incidentCreatorSlackHandle);
-
-  // Return a formatted message
-  var slackMessage = formatSlackMessage(incidentId, incidentName, incidentCreatorSlackHandle, incidentSlackChannel, googleDocUrl);
-
-  // Bit of delay before posting message to channels, to make sure channel and epic are created
-  setTimeout(function () {
-      sendSlackMessageToChannel(process.env.SLACK_INCIDENTS_CHANNEL, slackMessage);
-      sendSlackMessageToChannel(incidentSlackChannel, slackMessage)
-    },
-    500
-  );
-
-    // Bit of delay before posting message to channels, to make sure channel and eventn and epic are created
-  setTimeout(function () {
-      if(eventDetails['obj']){
-        sendConferenceCallDetailsToChannel(incidentSlackChannel, eventDetails);
-      }
-    },
-    3000
-  );
-
-  setTimeout(function () {
-      //This will only be populated if Jira is enabled and the response was already returned.
-      if(epic['url']){
-        sendEpicToChannel(incidentSlackChannel, epic['url']);
-      }
-    },
-    4000
-  );
+  return incidentSlackChannel;
 }
 
-function createSlackChannel (incidentId) {
+function createSlackChannel (incidentId, incidentName, incidentCreatorSlackHandle, incidentCreatorSlackUserId) {
   var prefix = process.env.SLACK_INCIDENT_CHANNEL_PREFIX;
   if(!prefix){
     prefix = 'incident-';
   }
   var incidentSlackChannel = prefix + incidentId;
 
-
-  // return process.env.SLACK_INCIDENT_CHANNEL_PREFIX + '000000';
-
   request.post({
     url:'https://slack.com/api/channels.create',
-    form: {
-      token: process.env.SLACK_API_TOKEN,
+    auth: {
+      'bearer': process.env.SLACK_API_TOKEN
+    },
+    json: {
       name: '#' + incidentSlackChannel
     }
   },
   function(error, response, body) {
     if (error) {
       console.error('Creating Slack channel failed:', error);
-
       throw new Error('Creating Slack channel failed');
     }
+    var obj = response.body;
+    var channelId = obj.channel.id;
+    var channelName = obj.channel.name;
+
+    createAdditionalResources(incidentId, incidentName, channelId, channelName, incidentCreatorSlackHandle);
+    setChannelTopic(channelId, incidentName + '. Please join conference call. See pinned message for details.');
+    inviteUser(channelId, incidentCreatorSlackUserId);
+
   });
 
   return incidentSlackChannel;
 }
 
+function createAdditionalResources(incidentId, incidentName, incidentSlackChannelId, incidentSlackChannel, incidentCreatorSlackHandle){
+
+  gapi_helper.registerIncidentEvent(incidentId,
+                                    incidentName,
+                                    incidentCreatorSlackHandle,
+                                    incidentSlackChannel,
+                                    function(eventDetails){
+                                      sendConferenceCallDetailsToChannel(incidentSlackChannelId, eventDetails);
+                                    });
+
+  var fileName = incidentSlackChannel;
+  gapi_helper.createIncidentsLogFile( fileName,
+                                      process.env.GDRIVE_INCIDENT_NOTES_FOLDER,
+                                      incidentName,
+                                      incidentCreatorSlackHandle,
+                                      function(url){
+                                        sendIncidentLogFileToChannel(incidentSlackChannelId, url);
+                                      }
+                                    );
+
+  createFollowupsEpic(incidentName, incidentSlackChannelId);
+
+  // Return a formatted message
+  var slackMessage = createInitialMessage(incidentName, incidentCreatorSlackHandle, incidentSlackChannel, incidentSlackChannelId);
+
+  sendSlackMessageToChannel("#" + process.env.SLACK_INCIDENTS_CHANNEL, slackMessage);
+  //remove join button from initial message and then send to incident channel
+  slackMessage.attachments[0].actions.shift();
+  sendSlackMessageToChannel(incidentSlackChannelId, slackMessage)
+}
+
+function setChannelTopic(channelId, topic){
+  request.post({
+    url:'https://slack.com/api/channels.setTopic',
+    auth: {
+      'bearer': process.env.SLACK_API_TOKEN
+    },
+    json: {
+      'channel': channelId,
+      'topic': topic
+    }
+  },
+  function(error, response, body) {
+    if(error || !body['ok']){
+      console.log('Error setting topic for channel '+channelId);
+    }
+  });
+}
+
+function inviteUser(channelId, userId){
+  request.post({
+    url:'https://slack.com/api/channels.invite',
+    auth: {
+      'bearer': process.env.SLACK_API_TOKEN
+    },
+    json: {
+      'channel': channelId,
+      'user': userId
+    }
+  },
+  function(error, response, body) {
+    if(error || !body['ok']){
+      console.log('Error inviting user for channel');
+      console.log(body, error);
+    }
+  });
+}
+
 function alertIncidentManager(incidentName, incidentSlackChannel, incidentCreatorSlackHandle) {
   if (!process.env.PAGERDUTY_API_TOKEN || process.env.DRY_RUN) {
+    console.log('pagerduty not setup');
     return
   }
 
@@ -230,7 +290,7 @@ function alertIncidentManager(incidentName, incidentSlackChannel, incidentCreato
   })
 }
 
-function sendSlackMessageToChannel(slackChannel, slackMessage) {
+function sendSlackMessageToChannel(slackChannel, slackMessage, pin_message) {
   if(process.env.DRY_RUN){
     console.log("Sending message below to channel "+slackChannel);
     console.log(slackMessage);
@@ -238,7 +298,7 @@ function sendSlackMessageToChannel(slackChannel, slackMessage) {
   }
   const newMessage = {
     ...slackMessage,
-    channel: '#' + slackChannel
+    channel: slackChannel
   };
 
   request.post({
@@ -251,13 +311,31 @@ function sendSlackMessageToChannel(slackChannel, slackMessage) {
   function(error, response, body) {
     if (error) {
       console.error('Sending message to Slack channel failed:', error);
-
       throw new Error('Sending message to Slack channel failed');
+    }
+    if(pin_message){
+      var ts = body['ts'];
+      var channel = body['channel'];
+      request.post({
+          url:'https://slack.com/api/pins.add',
+          auth: {
+            'bearer': process.env.SLACK_API_TOKEN
+          },
+          json: {
+            'channel': channel,
+            'timestamp':ts
+          }
+        }, (error, response) => {
+          if(error){
+            console.log('Error pinning message to channel: '+error);
+          }
+        }
+      );
     }
   });
 }
 
-function createFollowupsEpic(incidentName, epicResponse) {
+function createFollowupsEpic(incidentName, incidentChannelId) {
   var jiraDomain = process.env.JIRA_DOMAIN;
   //Return if JIRA details are not specified. Assuming checking the domain is enough
   if (!jiraDomain) {
@@ -281,7 +359,6 @@ function createFollowupsEpic(incidentName, epicResponse) {
     }
   };
 
-  var epicKey;
   request.post({
     url:'https://'+jiraDomain+'/rest/api/3/issue',
     auth: {
@@ -296,43 +373,10 @@ function createFollowupsEpic(incidentName, epicResponse) {
 
       throw new Error('Sending message to Jira failed');
     }
-    epicKey = response.body['key'];
-    epicResponse['url'] = epicKey?'https://'+jiraDomain+'/browse/'+epicKey:'';
+    var epicKey = response.body['key'];
+    var epicUrl = epicKey?'https://'+jiraDomain+'/browse/'+epicKey:'';
+    sendEpicToChannel(incidentChannelId, epicUrl);
   });
-}
-
-function createGoogleDoc(incidentId, incidentName) {
-  // Disabled for now, because it's not so easy to grant Drive access via API on single/some files/folders
-  /*
-  var googleDrive = google.drive({
-    version: 'v3',
-    auth: process.env.GOOGLE_API_KEY
-  });
-
-  var params = {
-    fileId: process.env.GOOGLE_DOCS_FILE_ID,
-    supportsTeamDrives: true,
-    resource: {
-      title: 'Incident: ' + incidentName + ' (' + incidentId + ')'
-    }
-  };
-
-  var result = googleDrive.files.copy(params)
-    .then(res => {
-      console.log(`New document ID is ${res.fileId}`);
-
-      return 'https://docs.google.com/document/d/' + res.fileId;
-    })
-    .catch(error => {
-      console.error('Copying Google Document failed', error);
-
-      return 'Copying Google Document failed';
-    });
-
-  console.log('Google result: ', result);
-  */
-
-  return 'https://docs.google.com/document/d/' + process.env.GOOGLE_DOCS_FILE_ID + '/template/preview'
 }
 
 http.createServer(function(req, res) {
@@ -351,12 +395,12 @@ http.createServer(function(req, res) {
 
       verifySlackWebhook(post);
 
-      createIncidentFlow(post);
+      var incidentChannel = createIncidentFlow(post);
 
       console.log('Successful execution of incident flow');
 
       res.writeHead(200, {'Content-Type': 'application/json'});
-      res.write(JSON.stringify({text: "Incident management process started"}));
+      res.write(JSON.stringify({text: "Incident management process started. Join incident channel: #"+incidentChannel}));
       res.end();
     });
   } catch (error) {
