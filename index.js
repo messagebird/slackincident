@@ -174,6 +174,9 @@ function createSlackChannel (incidentId, incidentName, incidentCreatorSlackHandl
     prefix = 'incident-';
   }
   var incidentSlackChannel = prefix + incidentId;
+  if(!incidentName){
+    incidentName =  incidentSlackChannel;
+  }
 
   request.post({
     url:'https://slack.com/api/channels.create',
