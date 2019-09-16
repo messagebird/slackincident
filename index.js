@@ -164,41 +164,43 @@ async function createIncidentFlow(body) {
     var incidentCreatorSlackHandle = body.user_name;
     var incidentCreatorSlackUserId = body.user_id;
 
-    var incidentSlackChannelID = await createSlackChannel(incidentId, incidentName, incidentCreatorSlackHandle, incidentCreatorSlackUserId);
-    alertIncidentManager(incidentName, incidentSlackChannelID, incidentCreatorSlackHandle);
-    return incidentSlackChannelID;
-}
-
-async function createSlackChannel(incidentId, incidentName, incidentCreatorSlackHandle, incidentCreatorSlackUserId) {
     var prefix = process.env.SLACK_INCIDENT_CHANNEL_PREFIX;
     if (!prefix) {
         prefix = 'incident-';
     }
+
     var incidentSlackChannel = prefix + incidentId;
     if (!incidentName) {
         incidentName = incidentSlackChannel;
     }
 
+    var incidentSlackChannelID = await createSlackChannel(incidentName, incidentCreatorSlackUserId, incidentSlackChannel);
+
+    alertIncidentManager(incidentName, incidentSlackChannelID, incidentCreatorSlackHandle);
+    createAdditionalResources(incidentId, incidentName, incidentSlackChannelID, incidentSlackChannel, incidentCreatorSlackHandle);
+
+    return incidentSlackChannelID;
+}
+
+async function createSlackChannel(incidentName, incidentCreatorSlackUserId, incidentSlackChannel) {
     try {
-      const res = await rp.post({
-        url: 'https://slack.com/api/channels.create',
-        auth: {
-          'bearer': process.env.SLACK_API_TOKEN
-        },
-        json: {
-          name: '#' + incidentSlackChannel
-        }
-      });
+        const res = await rp.post({
+            url: 'https://slack.com/api/channels.create',
+            auth: {
+                'bearer': process.env.SLACK_API_TOKEN
+            },
+            json: {
+                name: '#' + incidentSlackChannel
+            }
+        });
 
-      let channelId = res.channel.id
-      let channelName = res.channel.name
+        let channelId = res.channel.id;
 
-    createAdditionalResources(incidentId, incidentName, channelId, channelName, incidentCreatorSlackHandle);
-    setChannelTopic(channelId, incidentName + '. Please join conference call. See pinned message for details.');
-    inviteUser(channelId, incidentCreatorSlackUserId);
-      return res.channel.id
+        setChannelTopic(channelId, incidentName + '. Please join conference call. See pinned message for details.');
+        inviteUser(channelId, incidentCreatorSlackUserId);
+        return res.channel.id
     } catch (error) {
-      throw new Error(error);
+        throw new Error(error);
     }
 }
 
@@ -396,7 +398,7 @@ http.createServer(function (req, res) {
             console.log('body: ' + body);
             post = qs.parse(body);
 
-            verifySlackWebhook(post);
+            // verifySlackWebhook(post);
 
             var incidentChannelId = await createIncidentFlow(post);
 
