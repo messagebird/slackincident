@@ -21,6 +21,7 @@ This is what it looks like:
 * `SLACK_API_TOKEN`: [Legacy Slack API token](https://api.slack.com/custom-integrations/legacy-tokens).
 * `SLACK_INCIDENTS_CHANNEL`: The incidents Slack channel where all incidents are shared (e.g. `tech-incidents`).
 * `SLACK_INCIDENT_CHANNEL_PREFIX`: Slack channel for the incident postfixed with timestamp (e.g. `incident-`).
+* `SLACK_TEAM_ID`: The team ID to use for deep linking to channels. See https://stackoverflow.com/questions/40940327/what-is-the-simplest-way-to-find-a-slack-team-id-and-a-channel-id 
 #### Pagerduty integration
 * `PAGERDUTY_API_TOKEN`: The Pagerduty API token used to page an incident manager
 #### Jira Integration
