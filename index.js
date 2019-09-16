@@ -396,7 +396,7 @@ http.createServer(function (req, res) {
             console.log('body: ' + body);
             post = qs.parse(body);
 
-            // verifySlackWebhook(post);
+            verifySlackWebhook(post);
 
             var incidentChannelId = await createIncidentFlow(post);
 
