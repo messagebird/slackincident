@@ -223,7 +223,7 @@ function createAdditionalResources(incidentId, incidentName, incidentSlackChanne
         }
     );
 
-    createFollowupsEpic(incidentName, incidentSlackChannelId);
+    createFollowupsEpic(incidentName, incidentSlackChannelId, incidentSlackChannel);
 
     // Return a formatted message
     var slackMessage = createInitialMessage(incidentName, incidentCreatorSlackHandle, incidentSlackChannel, incidentSlackChannelId);
@@ -340,7 +340,7 @@ function sendSlackMessageToChannel(slackChannel, slackMessage, pin_message) {
         });
 }
 
-function createFollowupsEpic(incidentName, incidentChannelId) {
+function createFollowupsEpic(incidentName, incidentChannelId, incidentSlackChannel) {
     var jiraDomain = process.env.JIRA_DOMAIN;
     //Return if JIRA details are not specified. Assuming checking the domain is enough
     if (!jiraDomain) {
@@ -360,7 +360,8 @@ function createFollowupsEpic(incidentName, incidentChannelId) {
             "project": {
                 "id": jiraProjectId
             },
-            "summary": incidentName
+            "summary": incidentName,
+            "customfield_10009": incidentSlackChannel,
         }
     };
 
