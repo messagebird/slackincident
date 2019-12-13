@@ -2,10 +2,8 @@
 
 const http = require('http');
 const qs = require('querystring');
-// const {google} = require('googleapis'); // Add "googleapis": "^33.0.0", to package.json 'dependencies' when you enable this again.
 const request = require('request');
 const moment = require('moment');
-var gapi_helper = require("./googleapi_helper.js");
 var rp = require('request-promise');
 
 function createInitialMessage(incidentName, slackUserName, incidentSlackChannel, incidentSlackChannelId) {
@@ -58,90 +56,6 @@ function sendIncidentLogFileToChannel(incidentSlackChannelId, docUrl) {
     sendSlackMessageToChannel(incidentSlackChannelId, slackMessage);
 }
 
-function sendEpicToChannel(incidentSlackChannelId, epicUrl) {
-    var slackMessage = {
-        username: 'After the incident',
-        icon_emoji: ':dart:',
-        channel: '',
-        attachments: [],
-        link_names: true,
-        parse: 'full',
-    };
-    // Epic link
-    slackMessage.attachments.push({
-        color: '#FD6A02',
-        title: 'Discuss and track follow-up actions',
-        title_link: epicUrl,
-        text: epicUrl,
-        footer: 'Remember: Don\'t Neglect the Post-Mortem!'
-    });
-    sendSlackMessageToChannel(incidentSlackChannelId, slackMessage);
-}
-
-function sendConferenceCallDetailsToChannel(incidentSlackChannelId, eventDetails) {
-    var entryPoints = eventDetails.data.conferenceData.entryPoints;
-    var title_link;
-    var text;
-    var more_phones_link;
-    var tel;
-    var tel_link;
-    var pin;
-    var regionCode;
-    for (var i = 0; i < entryPoints.length; i++) {
-        var entryPoint = entryPoints[i];
-        var type = entryPoint.entryPointType;
-        if (type == 'video') {
-            title_link = entryPoint.uri;
-            text = entryPoint.label;
-        }
-        if (type == 'phone') {
-            tel_link = entryPoint.uri;
-            tel = entryPoint.label;
-            pin = entryPoint.pin;
-            regionCode = entryPoint.regionCode;
-        }
-        if (type == 'more') {
-            more_phones_link = entryPoint.uri;
-        }
-    }
-
-    var confDetailsMessage = {
-        "color": "#1F8456",
-        "title": "Join Conference Call",
-        "title_link": title_link,
-        "text": title_link,
-        "fields": [
-            {
-                "title": "Join by phone",
-                "value": "<" + tel_link + ",," + pin + "%23" + "|" + tel + " PIN: " + pin + "#>",
-                "short": false
-            }
-        ],
-        "actions": [
-            {
-                "type": "button",
-                "text": "Join Conference Call",
-                "url": title_link,
-                "style": "primary"
-            }
-        ],
-
-        "footer": "Not in " + regionCode + "? More phone numbers at " + more_phones_link
-    }
-
-    var slackMessage = {
-        username: 'Conference Call Details',
-        icon_emoji: ':telephone_receiver:',
-        channel: '',
-        attachments: [],
-        link_names: true,
-        parse: 'none',
-        mrkdwn: true,
-    };
-    slackMessage.attachments.push(confDetailsMessage);
-    sendSlackMessageToChannel(incidentSlackChannelId, slackMessage, true);
-}
-
 function verifyPostRequest(method) {
     if (method !== 'POST') {
         const error = new Error('Only POST requests are accepted');
@@ -176,9 +90,6 @@ async function createIncidentFlow(body) {
 
     var incidentSlackChannelID = await createSlackChannel(incidentName, incidentCreatorSlackUserId, incidentSlackChannel);
 
-    alertIncidentManager(incidentName, incidentSlackChannelID, incidentCreatorSlackHandle);
-    createAdditionalResources(incidentId, incidentName, incidentSlackChannelID, incidentSlackChannel, incidentCreatorSlackHandle);
-
     return incidentSlackChannelID;
 }
 
@@ -202,36 +113,6 @@ async function createSlackChannel(incidentName, incidentCreatorSlackUserId, inci
     } catch (error) {
         throw new Error(error);
     }
-}
-
-function createAdditionalResources(incidentId, incidentName, incidentSlackChannelId, incidentSlackChannel, incidentCreatorSlackHandle) {
-    gapi_helper.registerIncidentEvent(incidentId,
-        incidentName,
-        incidentCreatorSlackHandle,
-        incidentSlackChannel,
-        function (eventDetails) {
-            sendConferenceCallDetailsToChannel(incidentSlackChannelId, eventDetails);
-        });
-
-    var fileName = incidentSlackChannel;
-    gapi_helper.createIncidentsLogFile(fileName,
-        process.env.GDRIVE_INCIDENT_NOTES_FOLDER,
-        incidentName,
-        incidentCreatorSlackHandle,
-        function (url) {
-            sendIncidentLogFileToChannel(incidentSlackChannelId, url);
-        }
-    );
-
-    createFollowupsEpic(incidentName, incidentSlackChannelId, incidentSlackChannel);
-
-    // Return a formatted message
-    var slackMessage = createInitialMessage(incidentName, incidentCreatorSlackHandle, incidentSlackChannel, incidentSlackChannelId);
-
-    sendSlackMessageToChannel("#" + process.env.SLACK_INCIDENTS_CHANNEL, slackMessage);
-    //remove join button from initial message and then send to incident channel
-    slackMessage.attachments[0].actions.shift();
-    sendSlackMessageToChannel(incidentSlackChannelId, slackMessage)
 }
 
 function setChannelTopic(channelId, topic) {
@@ -271,29 +152,6 @@ function inviteUser(channelId, userId) {
         });
 }
 
-function alertIncidentManager(incidentName, incidentSlackChannelID, incidentCreatorSlackHandle) {
-    if (!process.env.PAGERDUTY_API_TOKEN || process.env.DRY_RUN) {
-        console.log('pagerduty not setup');
-        return
-    }
-
-    request.post({
-        url: "https://events.pagerduty.com/v2/enqueue",
-        json: {
-            "routing_key": process.env.PAGERDUTY_API_TOKEN,
-            "event_action": "trigger",
-            "payload": {
-                "summary": "New incident '" + incidentName + "' created by @" + incidentCreatorSlackHandle,
-                "source": incidentSlackChannelID,
-                "severity": "critical",
-                "custom_details": {
-                    "slack_deep_link_url": "https://slack.com/app_redirect?team=" + process.env.SLACK_TEAM_ID + "&channel=" + incidentSlackChannelID,
-                    "slack_deep_link": "slack://channel?team=" + process.env.SLACK_TEAM_ID + "&id=" + incidentSlackChannelID
-                }
-            },
-        }
-    })
-}
 
 function sendSlackMessageToChannel(slackChannel, slackMessage, pin_message) {
     if (process.env.DRY_RUN) {
@@ -337,51 +195,6 @@ function sendSlackMessageToChannel(slackChannel, slackMessage, pin_message) {
                     }
                 );
             }
-        });
-}
-
-function createFollowupsEpic(incidentName, incidentChannelId, incidentSlackChannel) {
-    var jiraDomain = process.env.JIRA_DOMAIN;
-    //Return if JIRA details are not specified. Assuming checking the domain is enough
-    if (!jiraDomain) {
-        return
-    }
-
-    var jiraUser = process.env.JIRA_USER;
-    var jiraApiKey = process.env.JIRA_API_KEY;
-    var jiraProjectId = process.env.JIRA_PROJECT_ID;
-    var jiraEpicIssueTypeId = process.env.JIRA_ISSUE_TYPE_ID;
-
-    const newMessage = {
-        "fields": {
-            "issuetype": {
-                "id": jiraEpicIssueTypeId
-            },
-            "project": {
-                "id": jiraProjectId
-            },
-            "summary": incidentName,
-            "customfield_10009": incidentSlackChannel,
-        }
-    };
-
-    request.post({
-            url: 'https://' + jiraDomain + '/rest/api/3/issue',
-            auth: {
-                'user': jiraUser,
-                'pass': jiraApiKey
-            },
-            json: newMessage
-        },
-        function (error, response, body) {
-            if (error) {
-                console.error('Sending message to Jira failed:', error);
-
-                throw new Error('Sending message to Jira failed');
-            }
-            var epicKey = response.body['key'];
-            var epicUrl = epicKey ? 'https://' + jiraDomain + '/browse/' + epicKey : '';
-            sendEpicToChannel(incidentChannelId, epicUrl);
         });
 }
 
