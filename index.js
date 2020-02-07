@@ -7,6 +7,7 @@ const request = require('request');
 const moment = require('moment');
 var gapi_helper = require("./googleapi_helper.js");
 var rp = require('request-promise');
+var date = require('date-and-time');
 
 function createInitialMessage(incidentName, slackUserName, incidentSlackChannel, incidentSlackChannelId) {
     // Prepare a rich Slack message
@@ -252,6 +253,33 @@ function setChannelTopic(channelId, topic) {
         });
 }
 
+function createPostMortem(incidentName, epicKey, incidentSlackChannelId){
+
+    if(!process.env.POST_MORTEMS_URL){
+        return;
+    }
+
+    const now = new Date();
+
+    request.post({
+        url: process.env.POST_MORTEMS_URL + '/incident/create',
+        json: {
+            "key" : process.env.POST_MORTEMS_KEY,
+            "incident" : {
+                "name": incidentName,
+                "when": date.format(now, 'YYYY-MM-DD HH:mm:ss'),
+                "issueTracking" : "jira:"+epicKey,
+                "channel" : "slack:"+incidentSlackChannelId
+            }
+        }
+    },
+    function (error, response, body) {
+        if (error) {
+            console.log(error);
+        }
+    });
+}
+
 function inviteUser(channelId, userId) {
     request.post({
             url: 'https://slack.com/api/channels.invite',
@@ -382,6 +410,7 @@ function createFollowupsEpic(incidentName, incidentChannelId, incidentSlackChann
             var epicKey = response.body['key'];
             var epicUrl = epicKey ? 'https://' + jiraDomain + '/browse/' + epicKey : '';
             sendEpicToChannel(incidentChannelId, epicUrl);
+            createPostMortem(incidentName, epicKey, incidentChannelId)
         });
 }
 
