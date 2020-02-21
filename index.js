@@ -38,6 +38,29 @@ function createInitialMessage(incidentName, slackUserName, incidentSlackChannel,
     return slackMessage;
 }
 
+function createCheatSheetMessage(incidentName, slackUserName, incidentSlackChannel, incidentSlackChannelId) {
+    // Prepare a rich Slack message
+    // See https://api.slack.com/docs/message-formatting
+    var slackMessage = {
+        username: 'Incident Management',
+        icon_emoji: ':information_source:',
+        attachments: [],
+        link_names: true,
+        parse: 'full',
+    };
+
+    slackMessage.attachments.push({
+      title: "Cheat Sheet",
+      text: [
+        '*SEV-1* - Critical incident',
+        '*SEV-2* - Major incident',
+        '*SEV-3* - Minor incident',
+        '*SEV-4* - No impact',
+      ].join('\n');
+    });
+    return slackMessage;
+}
+
 function sendIncidentLogFileToChannel(incidentSlackChannelId, docUrl) {
     var slackMessage = {
         username: 'During the incident',
@@ -233,6 +256,10 @@ function createAdditionalResources(incidentId, incidentName, incidentSlackChanne
     //remove join button from initial message and then send to incident channel
     slackMessage.attachments[0].actions.shift();
     sendSlackMessageToChannel(incidentSlackChannelId, slackMessage)
+
+    // Create and send cheetsheet message to the incident channel
+    var slackMessageIncidentCheetSheet = createCheetSheetMessage(incidentName, incidentCreatorSlackHandle, incidentSlackChannel, incidentSlackChannelId);
+    sendSlackMessageToChannel(incidentSlackChannelId, slackMessageIncidentCheetSheet)
 }
 
 function setChannelTopic(channelId, topic) {
