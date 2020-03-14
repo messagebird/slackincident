@@ -13,8 +13,8 @@ function createInitialMessage(incidentName, slackUserName, incidentSlackChannel,
     // Prepare a rich Slack message
     // See https://api.slack.com/docs/message-formatting
     var slackMessage = {
-        username: 'Incident Management',
-        icon_emoji: ':warning:',
+        username: 'Coffee Break',
+        icon_emoji: ':coffee:',
         attachments: [],
         link_names: true,
         parse: 'full',
@@ -23,17 +23,17 @@ function createInitialMessage(incidentName, slackUserName, incidentSlackChannel,
     slackMessage.attachments.push({
         color: '#8f0000',
         title: incidentName,
-        text: "Incident Channel: #" + incidentSlackChannel,
-        "fallback": "Join Incident Channel #" + incidentSlackChannel,
+        text: "Coffee Channel: #" + incidentSlackChannel,
+        "fallback": "Join Coffee Channel #" + incidentSlackChannel,
         "actions": [
             {
                 "type": "button",
-                "text": "Join Incident Channel",
+                "text": "Join Coffee Break",
                 "url": "slack://channel?team=" + process.env.SLACK_TEAM_ID + "&id=" + incidentSlackChannelId,
-                "style": "danger"
+                "style": "primary"
             }
         ],
-        footer: `reported by @${slackUserName}`
+        footer: `coffee break initated by @${slackUserName}`
     });
     return slackMessage;
 }
@@ -197,7 +197,7 @@ async function createSlackChannel(incidentName, incidentCreatorSlackUserId, inci
 
         let channelId = res.channel.id;
 
-        setChannelTopic(channelId, incidentName + '. Please join conference call. See pinned message for details.');
+        setChannelTopic(channelId, incidentName + '. Please join conference call to enjoy the break. See pinned message for details.');
         inviteUser(channelId, incidentCreatorSlackUserId);
         return res.channel.id
     } catch (error) {
@@ -215,14 +215,16 @@ function createAdditionalResources(incidentId, incidentName, incidentSlackChanne
         });
 
     var fileName = incidentSlackChannel;
-    gapi_helper.createIncidentsLogFile(fileName,
-        process.env.GDRIVE_INCIDENT_NOTES_FOLDER,
-        incidentName,
-        incidentCreatorSlackHandle,
-        function (url) {
-            sendIncidentLogFileToChannel(incidentSlackChannelId, url);
-        }
-    );
+    if(process.env.GDRIVE_INCIDENT_NOTES_FOLDER){
+        gapi_helper.createIncidentsLogFile(fileName,
+            process.env.GDRIVE_INCIDENT_NOTES_FOLDER,
+            incidentName,
+            incidentCreatorSlackHandle,
+            function (url) {
+                sendIncidentLogFileToChannel(incidentSlackChannelId, url);
+            }
+        );
+    }
 
     createFollowupsEpic(incidentName, incidentSlackChannelId, incidentSlackChannel);
 
@@ -432,12 +434,12 @@ http.createServer(function (req, res) {
 
             var incidentChannelId = await createIncidentFlow(post);
 
-            console.log('Successful execution of incident flow');
+            console.log('Successful execution of coffee flow');
 
             res.writeHead(200, {'Content-Type': 'application/json'});
             res.write(JSON.stringify({
                 // text: "Incident management process started. Join incident channel: #"+incidentChannel,
-                text: "Incident management process started. Join incident channel: slack://channel?team=" + process.env.SLACK_TEAM_ID + "&id=" + incidentChannelId,
+                text: "Enjoy your coffee break :) Join coffee channel: slack://channel?team=" + process.env.SLACK_TEAM_ID + "&id=" + incidentChannelId,
                 incident_channel_id: incidentChannelId
             }));
             res.end();
