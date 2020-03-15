@@ -33,7 +33,7 @@ function createInitialMessage(incidentName, slackUserName, incidentSlackChannel,
                 "style": "primary"
             }
         ],
-        footer: `coffee break initated by @${slackUserName}`
+        footer: `coffee break needed by @${slackUserName}`
     });
     return slackMessage;
 }
@@ -80,8 +80,6 @@ function sendEpicToChannel(incidentSlackChannelId, epicUrl) {
 }
 
 function sendConferenceCallDetailsToChannel(incidentSlackChannelId, eventDetails) {
-
-    console.log(eventDetails);
     var entryPoints = eventDetails.data.conferenceData.entryPoints;
     var title_link;
     var text;
