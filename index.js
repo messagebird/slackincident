@@ -183,8 +183,12 @@ async function createIncidentFlow(body) {
     alertIncidentManager(incidentName, incidentSlackChannelID, incidentCreatorSlackHandle);
     createAdditionalResources(incidentId, incidentName, incidentSlackChannelID, incidentSlackChannel, incidentCreatorSlackHandle);
 
-    setTimeoutPromise(120000, incidentSlackChannelID, incidentCreatorSlackUserId).then((channelId, break_creator) => {
-        sendSlackMessageToChannel(channelId, { text: "@" +incidentCreatorSlackUserId + ", hope you and the others had a good break :) This channel will be archived soon, and see you in in our cafe soon again!" });
+    setTimeoutPromise(120000, incidentSlackChannelID).then((channelId) => {
+        sendSlackMessageToChannel(channelId,{
+                                                username: 'barista',
+                                                icon_emoji: ':coffee:',
+                                                text: "@here, We hope you had a good break :) I have to clean the table for the next guests and this channel will be archived. I hope to see you again soon in our cafe for another break!"
+                                            });
 
         console.log('archiving channel in 30 seconds.');
         setTimeoutPromise(30000, incidentSlackChannelID).then((channelId) => {

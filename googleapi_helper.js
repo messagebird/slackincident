@@ -186,7 +186,7 @@ function createEvent(auth, incidentName, incidentId, incidentDescription, onSucc
   }
   var start = new Date ();
   var end = new Date ( start );
-  end.setMinutes ( start.getMinutes() + 10 );
+  end.setMinutes ( start.getMinutes() + 15 );
 
   var event = {
     'summary': incidentName,
