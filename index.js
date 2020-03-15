@@ -160,11 +160,6 @@ function verifySlackWebhook(body) {
         error.code = 401;
         throw error;
     }
-    if(!body.text){
-        const error = new Error('Please provide a short description of your virtual coffee break. Usage: /coffee [short description]. Example: /coffee Coffee break to talk about music.');
-        error.code = 422;
-        throw error;
-    }
 }
 
 async function createIncidentFlow(body) {
@@ -472,17 +467,24 @@ http.createServer(function (req, res) {
 
             verifySlackWebhook(post);
 
-            var incidentChannelId = await createIncidentFlow(post);
+            if(!body.text){
+                res.writeHead(422, {'Content-Type': 'application/json'});
+                res.write(JSON.stringify({response_type: "in_channel", text: "Please provide a short description of your virtual coffee break. Usage: /coffee [short description]. Example: /coffee Coffee break to talk about music."}));
+                res.end();
+            }
+            else{
+                var incidentChannelId = await createIncidentFlow(post);
 
-            console.log('Successful execution of coffee flow');
-
-            res.writeHead(200, {'Content-Type': 'application/json'});
-            res.write(JSON.stringify({
-                // text: "Incident management process started. Join incident channel: #"+incidentChannel,
-                text: "Enjoy your coffee break :) Join coffee channel: slack://channel?team=" + process.env.SLACK_TEAM_ID + "&id=" + incidentChannelId,
-                incident_channel_id: incidentChannelId
-            }));
-            res.end();
+                console.log('Successful execution of coffee flow');
+    
+                res.writeHead(200, {'Content-Type': 'application/json'});
+                res.write(JSON.stringify({
+                    // text: "Incident management process started. Join incident channel: #"+incidentChannel,
+                    text: "Enjoy your coffee break :) Join coffee channel: slack://channel?team=" + process.env.SLACK_TEAM_ID + "&id=" + incidentChannelId,
+                    incident_channel_id: incidentChannelId
+                }));
+                res.end();
+            }
         });
     } catch (error) {
         console.log(error);
