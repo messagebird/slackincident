@@ -80,6 +80,8 @@ function sendEpicToChannel(incidentSlackChannelId, epicUrl) {
 }
 
 function sendConferenceCallDetailsToChannel(incidentSlackChannelId, eventDetails) {
+
+    console.log(eventDetails);
     var entryPoints = eventDetails.data.conferenceData.entryPoints;
     var title_link;
     var text;

@@ -167,9 +167,8 @@ exports.registerIncidentEvent =  function registerIncidentEvent(incidentId, inci
     var now = moment();
     var eventDescription = "<b>"+incidentName+"</b>\n"+
                               "<small>" +
-                              "Incident response triggered on " + now.format("DD/MM/YYYY HH:mm") + "\n" +
-                              "Reported by " + reportedBy + "\n" +
-                              (slackChannel?"<a href='https://slack.com/app_redirect?channel=" + slackChannel+ "'>Incident Slack Channel</a>\n":'')+
+                              "Coffee break needed by " + reportedBy +" on " + now.format("DD/MM/YYYY HH:mm") + "\n" +
+                              (slackChannel?"<a href='https://slack.com/app_redirect?channel=" + slackChannel+ "'>Coffee Break Slack Channel</a>\n":'')+
                               "</small>";
 
     createEvent(oAuth2Client, incidentName, incidentId, eventDescription, onSuccess);
@@ -187,7 +186,7 @@ function createEvent(auth, incidentName, incidentId, incidentDescription, onSucc
   }
   var start = new Date ();
   var end = new Date ( start );
-  end.setMinutes ( start.getMinutes() + 5 );
+  end.setMinutes ( start.getMinutes() + 10 );
 
   var event = {
     'summary': incidentName,
