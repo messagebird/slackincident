@@ -9,6 +9,9 @@ var gapi_helper = require("./googleapi_helper.js");
 var rp = require('request-promise');
 var date = require('date-and-time');
 
+const util = require('util');
+const setTimeoutPromise = util.promisify(setTimeout);
+
 function createInitialMessage(incidentName, slackUserName, incidentSlackChannel, incidentSlackChannelId) {
     // Prepare a rich Slack message
     // See https://api.slack.com/docs/message-formatting
@@ -180,6 +183,15 @@ async function createIncidentFlow(body) {
     alertIncidentManager(incidentName, incidentSlackChannelID, incidentCreatorSlackHandle);
     createAdditionalResources(incidentId, incidentName, incidentSlackChannelID, incidentSlackChannel, incidentCreatorSlackHandle);
 
+    setTimeoutPromise(120000, incidentSlackChannelID, incidentCreatorSlackUserId).then((channelId, break_creator) => {
+        sendSlackMessageToChannel(channelId, { text: "@" +incidentCreatorSlackUserId + ", hope you and the others had a good break :) This channel will be archived soon, and see you in in our cafe soon again!" });
+
+        console.log('archiving channel in 30 seconds.');
+        setTimeoutPromise(30000, incidentSlackChannelID).then((channelId) => {
+            archiveChannel(channelId);
+        });
+    });
+
     return incidentSlackChannelID;
 }
 
@@ -251,6 +263,23 @@ function setChannelTopic(channelId, topic) {
         function (error, response, body) {
             if (error || !body['ok']) {
                 console.log('Error setting topic for channel ' + channelId);
+            }
+        });
+}
+
+function archiveChannel(channelId) {
+    request.post({
+            url: 'https://slack.com/api/channels.archive',
+            auth: {
+                'bearer': process.env.SLACK_API_TOKEN
+            },
+            json: {
+                'channel': channelId
+            }
+        },
+        function (error, response, body) {
+            if (error || !body['ok']) {
+                console.log('Error archiving channel ' + channelId + " - " + body['error']);
             }
         });
 }
