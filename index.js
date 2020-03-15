@@ -468,8 +468,8 @@ http.createServer(function (req, res) {
             verifySlackWebhook(post);
 
             if(!body.text){
-                res.writeHead(422, {'Content-Type': 'application/json'});
-                res.write(JSON.stringify({response_type: "in_channel", text: "Please provide a short description of your virtual coffee break. Usage: /coffee [short description]. Example: /coffee Coffee break to talk about music."}));
+                res.writeHead(200, {'Content-Type': 'application/json'});
+                res.write(JSON.stringify({text: "Sorry, I didn't get your request. Please provide a short description of your virtual coffee break. Usage: /coffee [short description]. Example: /coffee Coffee break to talk about music."}));
                 res.end();
             }
             else{
