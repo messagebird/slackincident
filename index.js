@@ -160,6 +160,11 @@ function verifySlackWebhook(body) {
         error.code = 401;
         throw error;
     }
+    if(!body.text){
+        const error = new Error('Please provide a short description of your virtual coffee break. Usage: /coffee [short description]. Example: /coffee Coffee break to talk about music.');
+        error.code = 422;
+        throw error;
+    }
 }
 
 async function createIncidentFlow(body) {
