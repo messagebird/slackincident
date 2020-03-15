@@ -187,7 +187,9 @@ async function createIncidentFlow(body) {
         sendSlackMessageToChannel(channelId,{
                                                 username: 'barista',
                                                 icon_emoji: ':coffee:',
-                                                text: "@here, We hope you had a good break :) I have to clean the table for the next guests and this channel will be archived. I hope to see you again soon in our cafe for another break!"
+                                                text: "@here, We hope you had a good break :) I have to clean the table for the next guests and this channel will be archived. I hope to see you again soon in our cafe for another break!",
+                                                link_names: true,
+                                                parse: 'full'
                                             });
 
         console.log('archiving channel in 30 seconds.');
