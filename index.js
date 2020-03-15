@@ -183,7 +183,7 @@ async function createIncidentFlow(body) {
     alertIncidentManager(incidentName, incidentSlackChannelID, incidentCreatorSlackHandle);
     createAdditionalResources(incidentId, incidentName, incidentSlackChannelID, incidentSlackChannel, incidentCreatorSlackHandle);
 
-    setTimeoutPromise(120000, incidentSlackChannelID).then((channelId) => {
+    setTimeoutPromise(900000, incidentSlackChannelID).then((channelId) => {
         sendSlackMessageToChannel(channelId,{
                                                 username: 'barista',
                                                 icon_emoji: ':coffee:',
