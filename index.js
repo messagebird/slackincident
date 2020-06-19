@@ -300,27 +300,58 @@ function inviteUser(channelId, userId) {
 }
 
 function alertIncidentManager(incidentName, incidentSlackChannelID, incidentCreatorSlackHandle) {
-    if (!process.env.PAGERDUTY_API_TOKEN || process.env.DRY_RUN) {
-        console.log('pagerduty not setup');
-        return
+    if(process.env.DRY_RUN){
+        console.log('DRY_RUN: Creating incident!');
+        return;
     }
-
-    request.post({
-        url: "https://events.pagerduty.com/v2/enqueue",
-        json: {
-            "routing_key": process.env.PAGERDUTY_API_TOKEN,
-            "event_action": "trigger",
-            "payload": {
-                "summary": "New incident '" + incidentName + "' created by @" + incidentCreatorSlackHandle,
-                "source": incidentSlackChannelID,
-                "severity": "critical",
-                "custom_details": {
-                    "slack_deep_link_url": "https://slack.com/app_redirect?team=" + process.env.SLACK_TEAM_ID + "&channel=" + incidentSlackChannelID,
-                    "slack_deep_link": "slack://channel?team=" + process.env.SLACK_TEAM_ID + "&id=" + incidentSlackChannelID
-                }
+    if(process.env.PAGERDUTY_API_TOKEN){
+        request.post({
+            url: "https://events.pagerduty.com/v2/enqueue",
+            json: {
+                "routing_key": process.env.PAGERDUTY_API_TOKEN,
+                "event_action": "trigger",
+                "payload": {
+                    "summary": "New incident '" + incidentName + "' created by @" + incidentCreatorSlackHandle,
+                    "source": incidentSlackChannelID,
+                    "severity": "critical",
+                    "custom_details": {
+                        "slack_deep_link_url": "https://slack.com/app_redirect?team=" + process.env.SLACK_TEAM_ID + "&channel=" + incidentSlackChannelID,
+                        "slack_deep_link": "slack://channel?team=" + process.env.SLACK_TEAM_ID + "&id=" + incidentSlackChannelID
+                    }
+                },
+            }
+        })
+    }
+    if(process.env.OPSGENIE_API_KEY){
+        request.post({
+            url: process.env.OPSGENIE_URL + "/v1/incidents/create",
+            headers: {
+                'Authorization': 'GenieKey '+process.env.OPSGENIE_API_KEY
             },
-        }
-    })
+            json: {
+                "message": incidentName,
+                "description": "New incident '" + incidentName + "' created by @" + incidentCreatorSlackHandle,
+                "priority":"P1",
+                "responders":[
+                    {"id": process.env.OPSGENIE_INCIDENT_MANAGER_TEAM_ID ,"type":"team"}
+                ],
+                "details": {
+                    "slack_deep_link_url": "https://slack.com/app_redirect?team=" + process.env.SLACK_TEAM_ID + "&channel=" + incidentSlackChannelID,
+                    "slack_deep_link": "slack://channel?team=" + process.env.SLACK_TEAM_ID + "&id=" + incidentSlackChannelID,
+                    "initiated_by": incidentCreatorSlackHandle,
+                    "slack_channel": incidentSlackChannelID
+                }
+            }
+        },
+        function (error, response, body) {
+            if(error){
+                console.log(error);
+            }
+            else{
+                console.log("Opsgenie incident started!");
+            }
+        })
+    }
 }
 
 function sendSlackMessageToChannel(slackChannel, slackMessage, pin_message) {
