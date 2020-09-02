@@ -229,7 +229,13 @@ function createAdditionalResources(incidentId, incidentName, incidentSlackChanne
     // Return a formatted message
     var slackMessage = createInitialMessage(incidentName, incidentCreatorSlackHandle, incidentSlackChannel, incidentSlackChannelId);
 
-    sendSlackMessageToChannel("#" + process.env.SLACK_INCIDENTS_CHANNEL, slackMessage);
+    if(process.env.SLACK_INCIDENTS_CHANNEL){
+        var channelsToNotify = process.env.SLACK_INCIDENTS_CHANNEL.split(",");
+        for(var i=0;i<channelsToNotify.length;i++){
+            sendSlackMessageToChannel("#" + channelsToNotify[i], slackMessage);
+        }
+    }
+
     //remove join button from initial message and then send to incident channel
     slackMessage.attachments[0].actions.shift();
     sendSlackMessageToChannel(incidentSlackChannelId, slackMessage)
