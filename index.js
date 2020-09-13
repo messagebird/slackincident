@@ -322,7 +322,9 @@ function alertIncidentManager(incidentName, incidentSlackChannelID, incidentCrea
                     "severity": "critical",
                     "custom_details": {
                         "slack_deep_link_url": "https://slack.com/app_redirect?team=" + process.env.SLACK_TEAM_ID + "&channel=" + incidentSlackChannelID,
-                        "slack_deep_link": "slack://channel?team=" + process.env.SLACK_TEAM_ID + "&id=" + incidentSlackChannelID
+                        "slack_deep_link": "slack://channel?team=" + process.env.SLACK_TEAM_ID + "&id=" + incidentSlackChannelID,
+                        "initiated_by": incidentCreatorSlackHandle,
+                        "slack_channel": incidentSlackChannelID
                     }
                 },
             }
