@@ -143,6 +143,24 @@ function sendConferenceCallDetailsToChannel(incidentSlackChannelId, eventDetails
     sendSlackMessageToChannel(incidentSlackChannelId, slackMessage, true);
 }
 
+function sendIncidentManagerJoiningSoonMessageToChannel(incidentSlackChannelId, incidentManager) {
+    var emoji = Math.random() < 0.5 ? ':male-firefighter:' : ':female-firefighter:';
+    var slackMessage = {
+        username: 'Incident Manager',
+        icon_emoji: emoji,
+        channel: '',
+        attachments: [],
+        link_names: true,
+        parse: 'full',
+    };
+
+    slackMessage.attachments.push({
+        color: '#FF0000',
+        text: incidentManager + ' will join soon as incident manager',
+    });
+    sendSlackMessageToChannel(incidentSlackChannelId, slackMessage);
+}
+
 function verifyPostRequest(method) {
     if (method !== 'POST') {
         const error = new Error('Only POST requests are accepted');
@@ -229,7 +247,13 @@ function createAdditionalResources(incidentId, incidentName, incidentSlackChanne
     // Return a formatted message
     var slackMessage = createInitialMessage(incidentName, incidentCreatorSlackHandle, incidentSlackChannel, incidentSlackChannelId);
 
-    sendSlackMessageToChannel("#" + process.env.SLACK_INCIDENTS_CHANNEL, slackMessage);
+    if(process.env.SLACK_INCIDENTS_CHANNEL){
+        var channelsToNotify = process.env.SLACK_INCIDENTS_CHANNEL.split(",");
+        for(var i=0;i<channelsToNotify.length;i++){
+            sendSlackMessageToChannel("#" + channelsToNotify[i], slackMessage);
+        }
+    }
+
     //remove join button from initial message and then send to incident channel
     slackMessage.attachments[0].actions.shift();
     sendSlackMessageToChannel(incidentSlackChannelId, slackMessage)
@@ -316,7 +340,9 @@ function alertIncidentManager(incidentName, incidentSlackChannelID, incidentCrea
                     "severity": "critical",
                     "custom_details": {
                         "slack_deep_link_url": "https://slack.com/app_redirect?team=" + process.env.SLACK_TEAM_ID + "&channel=" + incidentSlackChannelID,
-                        "slack_deep_link": "slack://channel?team=" + process.env.SLACK_TEAM_ID + "&id=" + incidentSlackChannelID
+                        "slack_deep_link": "slack://channel?team=" + process.env.SLACK_TEAM_ID + "&id=" + incidentSlackChannelID,
+                        "initiated_by": incidentCreatorSlackHandle,
+                        "slack_channel": incidentSlackChannelID
                     }
                 },
             }
@@ -445,6 +471,52 @@ function createFollowupsEpic(incidentName, incidentChannelId, incidentSlackChann
         });
 }
 
+
+/**
+ *
+ * This message will be called when the webhook coming from pagerduty arrives that indicates the Incident Manager has acknowledge an alert
+ *
+ * @param {0} message - Message object for the acknowledge event as describe here: https://developer.pagerduty.com/docs/webhooks/v2-overview/#webhook-payload
+ */
+function onIncidentManagerAcknowledge(message){
+
+    if(process.env.PAGERDUTY_READ_ONLY_API_KEY){
+        var log_entry = message["log_entries"][0];//As defined in the doc, there will be only one log entry for incident.acknowledge event
+        var service = log_entry["service"];
+        if(service["id"] != process.env.PAGERDUTY_INCIDENT_MANAGERS_SERVICE_ID){
+            return
+        }
+        var agent = log_entry["agent"];
+        var pagerduty_user_ref_url = agent["self"];
+        var incident = log_entry["incident"];
+        var pagerduty_incident_ref_url = incident["self"];
+
+        var auth_header = {
+            'Authorization': 'Token token='+ process.env.PAGERDUTY_READ_ONLY_API_KEY
+        };
+
+        //get alerts for the incident to get additional details for the incident
+        request.get({
+            url: pagerduty_incident_ref_url + "/alerts",
+            headers: auth_header
+        },
+        function (error, response, body) {
+            if(error){
+                console.log(error);
+            }
+            else{
+                var alerts = JSON.parse(body)["alerts"];
+                var alert = alerts[0];
+                var alert_details = alert["body"]["details"];
+                var slack_channel = alert_details["slack_channel"];
+                if(slack_channel){
+                    sendIncidentManagerJoiningSoonMessageToChannel(slack_channel, agent["summary"])
+                }
+            }
+        })
+    }
+}
+
 http.createServer(function (req, res) {
     try {
         verifyPostRequest(req.method);
@@ -455,24 +527,42 @@ http.createServer(function (req, res) {
             body += chunk;
         });
 
-        req.on('end', async function () {
-            console.log('body: ' + body);
-            post = qs.parse(body);
+        console.log(req.url);
+        if(req.url == "/pagerduty"){
+            req.on('end', async function () {
+                console.log('sucessfuly received pagerduty webhook from pagerduty');
+                post = JSON.parse(body);
+                if(post.messages){
+                    for (var i = 0; i < post.messages.length; i++) {
+                        var message = post.messages[i];
+                        if(message['event'] == 'incident.acknowledge'){
+                            onIncidentManagerAcknowledge(message);
+                        }
+                    }
+                }
+                res.writeHead(200, {'Content-Type': 'application/json'});
+                res.write(JSON.stringify({
+                    text: "OK"
+                }));
+                res.end();
+            });
+        }
+        else{
+            req.on('end', async function () {
+                console.log('body: ' + body);
+                post = qs.parse(body);
+                verifySlackWebhook(post);
 
-            verifySlackWebhook(post);
-
-            var incidentChannelId = await createIncidentFlow(post);
-
-            console.log('Successful execution of incident flow');
-
-            res.writeHead(200, {'Content-Type': 'application/json'});
-            res.write(JSON.stringify({
-                // text: "Incident management process started. Join incident channel: #"+incidentChannel,
-                text: "Incident management process started. Join incident channel: slack://channel?team=" + process.env.SLACK_TEAM_ID + "&id=" + incidentChannelId,
-                incident_channel_id: incidentChannelId
-            }));
-            res.end();
-        });
+                var incidentChannelId = await createIncidentFlow(post);
+                console.log('Successful execution of incident flow');
+                res.writeHead(200, {'Content-Type': 'application/json'});
+                res.write(JSON.stringify({
+                    text: "Incident management process started. Join incident channel: slack://channel?team=" + process.env.SLACK_TEAM_ID + "&id=" + incidentChannelId,
+                    incident_channel_id: incidentChannelId
+                }));
+                res.end();
+            });
+        }
     } catch (error) {
         console.log(error);
 
