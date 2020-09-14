@@ -146,7 +146,7 @@ function sendConferenceCallDetailsToChannel(incidentSlackChannelId, eventDetails
 function sendIncidentManagerJoiningSoonMessageToChannel(incidentSlackChannelId, incidentManager) {
     var slackMessage = {
         username: 'Incident Manager',
-        icon_emoji: ':male-firefighter:',
+        icon_emoji: ':female-firefighter:',
         channel: '',
         attachments: [],
         link_names: true,
